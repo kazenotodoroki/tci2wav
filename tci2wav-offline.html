@@ -1,0 +1,1888 @@
+<!-- tci2wav by Aidan Scroggins (MIT) - https://github.com/AidanScroggins/tci2wav
+     Single-file offline bundle for the RS Trig USB pack: worker inlined as a Blob so it
+     works from file:// in Chrome/Edge/Firefox. Code unchanged otherwise. -->
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tci2wav: Trigger 2 TCI exporter</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0b0f17; --bg-grad-a:#131a2b; --bg-grad-b:#0b0f17;
+  --panel:#121826; --panel-2:#182033; --panel-3:#1f2940;
+  --line:#28324a; --line-soft:#1e2639;
+  --text:#e7ecf5; --muted:#8d9ab5; --faint:#5f6b85;
+  --accent:#7aa2ff; --accent-2:#4fe0b0; --accent-3:#ffb454; --accent-4:#c792ea;
+  --danger:#ff6b81;
+  --g-a:#4fe0b0; --g-b:#ffb454; --g-c:#ff8fb1; --g-x:#ff6b81;
+  --ring:0 0 0 3px rgba(122,162,255,.30);
+  --radius:14px; --radius-sm:9px;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.7);
+}
+html[data-theme=light]{
+  color-scheme:light;
+  --bg:#f6f7fb; --bg-grad-a:#eef1fb; --bg-grad-b:#f9fafc;
+  --panel:#ffffff; --panel-2:#f4f6fc; --panel-3:#eaeff9;
+  --line:#dbe1ee; --line-soft:#e8ecf5;
+  --text:#141a26; --muted:#5a6580; --faint:#8b95ad;
+  --accent:#3f6fe5; --accent-2:#0f9b74; --accent-3:#c0730a; --accent-4:#8a4fd0;
+  --danger:#d1344c;
+  --g-a:#0f9b74; --g-b:#c0730a; --g-c:#c2426f; --g-x:#d1344c;
+  --ring:0 0 0 3px rgba(63,111,229,.25);
+  --shadow:0 1px 2px rgba(20,26,38,.06),0 8px 24px -14px rgba(20,26,38,.28);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  color:var(--text);
+  background:
+    radial-gradient(1100px 520px at 12% -8%, color-mix(in srgb,var(--accent) 16%, transparent), transparent 62%),
+    radial-gradient(900px 460px at 88% -4%, color-mix(in srgb,var(--accent-4) 13%, transparent), transparent 60%),
+    linear-gradient(180deg,var(--bg-grad-a),var(--bg-grad-b) 40%,var(--bg));
+  background-attachment:fixed;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1040px;margin:0 auto;padding:28px 20px 64px}
+
+header.top{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+.brand{flex:1 1 auto;min-width:260px}
+h1{margin:0;font-size:26px;letter-spacing:-.02em;font-weight:700;
+   background:linear-gradient(92deg,var(--accent),var(--accent-4) 55%,var(--accent-2));
+   -webkit-background-clip:text;background-clip:text;color:transparent}
+h1 .dot{color:var(--accent-3)}
+.tagline{margin:4px 0 0;color:var(--muted);font-size:13.5px}
+
+.card{background:color-mix(in srgb,var(--panel) 88%, transparent);
+  border:1px solid var(--line);border-radius:var(--radius);
+  padding:20px;margin:16px 0;box-shadow:var(--shadow);
+  backdrop-filter:blur(8px)}
+.card > h2{margin:0 0 4px;font-size:15px;font-weight:650;letter-spacing:.01em;
+  display:flex;align-items:center;gap:8px}
+.card > h2::before{content:"";width:4px;height:16px;border-radius:3px;
+  background:linear-gradient(180deg,var(--accent),var(--accent-4))}
+.card > .hint{margin:0 0 16px;color:var(--muted);font-size:13px}
+
+label{display:block;margin:14px 0 5px;font-weight:600;font-size:13px;color:var(--muted)}
+input[type=text]{width:100%;padding:9px 11px;font-size:14px;color:var(--text);
+  background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius-sm);
+  transition:border-color .15s,box-shadow .15s}
+input[type=text]:focus{outline:none;border-color:var(--accent);box-shadow:var(--ring)}
+input[type=file]{width:100%;padding:11px;font-size:13.5px;color:var(--muted);
+  background:var(--panel-2);border:1px dashed var(--line);border-radius:var(--radius-sm)}
+input[type=file]:hover{border-color:var(--accent)}
+input[type=file]::file-selector-button{margin-right:11px;padding:6px 12px;font:inherit;font-size:13px;
+  color:var(--text);background:var(--panel-3);border:1px solid var(--line);
+  border-radius:7px;cursor:pointer}
+input[type=file]::file-selector-button:hover{border-color:var(--accent)}
+
+button{font:inherit;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;
+  background:var(--panel-3);border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:9px 16px;transition:transform .08s,border-color .15s,background .15s}
+button:hover:not(:disabled){border-color:var(--accent)}
+button:active:not(:disabled){transform:translateY(1px)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible{outline:none;box-shadow:var(--ring)}
+button.primary{color:#08101f;border:none;
+  background:linear-gradient(96deg,var(--accent),var(--accent-4));
+  box-shadow:0 6px 18px -10px color-mix(in srgb,var(--accent) 90%, transparent)}
+button.primary:hover:not(:disabled){filter:brightness(1.08)}
+button.ghost{background:transparent}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px}
+.btnrow.tight{margin-top:10px;gap:8px}
+.btnrow.tight button{padding:5px 11px;font-size:12.5px}
+.srcgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.tblin{width:100%;min-width:74px;padding:4px 8px;font:inherit;font-size:12.5px;
+  color:var(--text);background:var(--panel-2);border:1px solid var(--line);
+  border-radius:6px}
+.tblin:focus{outline:none;border-color:var(--accent);box-shadow:var(--ring)}
+.outpath{font:11.5px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color:var(--muted);overflow-wrap:anywhere;min-width:132px}
+.warn{color:var(--accent-3);font-size:11.5px}
+tr.sel{background:color-mix(in srgb,var(--accent) 11%,transparent)}
+tr.dup td{background:color-mix(in srgb,var(--accent-3) 9%,transparent)}
+.minibtn{padding:2px 8px;font-size:11.5px;border-radius:6px}
+input[type=checkbox]{accent-color:var(--accent);width:15px;height:15px;cursor:pointer}
+
+.seg{display:inline-flex;background:var(--panel-2);border:1px solid var(--line);
+  border-radius:10px;padding:3px;gap:3px;margin-bottom:4px}
+.seg button{background:transparent;border:none;padding:6px 14px;font-size:13px;
+  border-radius:7px;color:var(--muted)}
+.seg button[aria-selected=true]{background:var(--panel-3);color:var(--text);
+  box-shadow:inset 0 0 0 1px var(--line)}
+.panel{display:none}
+.panel.active{display:block}
+
+.status{margin-top:14px;padding:10px 12px;border-radius:var(--radius-sm);font-size:13.5px;
+  border:1px solid var(--line);background:var(--panel-2);color:var(--muted);display:none}
+.status.show{display:block}
+.status.err{border-color:color-mix(in srgb,var(--danger) 55%,var(--line));
+  background:color-mix(in srgb,var(--danger) 12%,var(--panel-2));color:var(--danger)}
+.status.ok{border-color:color-mix(in srgb,var(--accent-2) 45%,var(--line));
+  background:color-mix(in srgb,var(--accent-2) 10%,var(--panel-2))}
+
+.bar{height:7px;border-radius:99px;background:var(--panel-3);overflow:hidden;margin-top:10px}
+.bar > i{display:block;height:100%;width:0;border-radius:99px;
+  background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .18s ease}
+
+table{border-collapse:collapse;width:100%;font-size:12.5px;margin-top:14px}
+th,td{padding:6px 8px;text-align:left;vertical-align:middle;
+  border-bottom:1px solid var(--line-soft)}
+th{color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;
+  letter-spacing:.05em;position:sticky;top:0;background:var(--panel);white-space:nowrap}
+th.num{text-align:right}
+tbody tr:hover{background:color-mix(in srgb,var(--accent) 7%, transparent)}
+td.num{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.tablewrap{max-height:420px;overflow:auto;border:1px solid var(--line-soft);
+  border-radius:var(--radius-sm);margin-top:12px}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;
+  background:var(--panel-3);padding:1px 6px;border-radius:5px}
+
+.grade{display:inline-block;min-width:20px;text-align:center;font-weight:700;
+  font-size:11px;border-radius:5px;padding:1px 6px;color:#08101f}
+.g-A{background:var(--g-a)} .g-B{background:var(--g-b)}
+.g-C{background:var(--g-c)} .g-X{background:var(--g-x);color:#fff}
+.chip{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;
+  border:1px solid var(--line);color:var(--muted);background:var(--panel-3)}
+.chip.st{border-color:color-mix(in srgb,var(--accent-4) 55%,var(--line));
+  color:var(--accent-4)}
+.chip.hot{border-color:color-mix(in srgb,var(--accent-3) 60%,var(--line));
+  color:var(--accent-3)}
+.chip:empty{display:none}
+
+.playbtn{padding:3px 10px;font-size:12px;line-height:1.5;min-width:52px}
+.playbtn.on{border-color:var(--accent-2);color:var(--accent-2)}
+
+/* The audio element has a large intrinsic width, so it gets its own full
+   width row. Sharing a flex row with the slider made it overflow its box and
+   sit on top of the slider. */
+.preview{display:flex;flex-direction:column;gap:10px;padding:14px;
+  border:1px solid var(--line);border-radius:var(--radius-sm);
+  background:linear-gradient(180deg,var(--panel-2),transparent);margin-top:12px}
+.preview audio{display:block;width:100%;min-width:0;height:36px}
+.pv-meta{display:flex;justify-content:space-between;gap:12px;font-size:12px;
+  color:var(--muted);min-width:0}
+.pv-meta span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pv-ctrl{display:flex;gap:16px;align-items:center;flex-wrap:wrap;min-width:0}
+.pv-btns{display:flex;gap:12px;align-items:center;flex:0 0 auto}
+.volbox{flex:1 1 240px;min-width:180px;min-width:0}
+input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:22px;
+  background:transparent;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:99px;
+  background:linear-gradient(90deg,var(--accent-2),var(--accent),var(--accent-3))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;
+  margin-top:-5.5px;border-radius:50%;background:var(--text);
+  border:3px solid var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.5)}
+input[type=range]::-moz-range-track{height:5px;border-radius:99px;background:var(--line)}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;
+  background:var(--text);border:3px solid var(--accent)}
+input[type=range]:focus-visible{outline:none;box-shadow:var(--ring);border-radius:8px}
+.volrow{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);
+  margin-bottom:2px}
+.volrow b{color:var(--text);font-variant-numeric:tabular-nums}
+
+.peak{height:6px;border-radius:99px;background:var(--panel-3);overflow:hidden;
+  margin-top:8px;position:relative}
+.peak > i{display:block;height:100%;width:0;
+  background:linear-gradient(90deg,var(--accent-2),var(--accent-3));transition:width .1s}
+
+#mapview{white-space:pre-wrap;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  background:var(--panel-2);border:1px solid var(--line-soft);border-radius:var(--radius-sm);
+  padding:12px;margin-top:12px;max-height:340px;overflow:auto;color:var(--muted);display:none}
+#mapview.show{display:block}
+details > summary{cursor:pointer;color:var(--muted);font-size:13px;padding:6px 0;
+  list-style:none;user-select:none}
+details > summary::-webkit-details-marker{display:none}
+details > summary::before{content:"▸ ";color:var(--accent)}
+details[open] > summary::before{content:"▾ "}
+
+.foot{font-size:12.5px;color:var(--muted)}
+.foot a{color:var(--accent);text-decoration:none}
+.foot a:hover{text-decoration:underline}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;align-items:center}
+
+.iconbtn{padding:7px 12px;font-size:13px;background:var(--panel-2)}
+@media (max-width:640px){
+  .wrap{padding:18px 14px 48px}
+  .card{padding:16px}
+  h1{font-size:22px}
+  table{font-size:11.5px}
+  th,td{padding:5px 5px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="brand">
+    <h1>tci2wav<span class="dot">.</span></h1>
+    <p class="tagline">Trigger&nbsp;2 <code>.tci</code> &rarr; velocity-named WAVs. Mono and stereo, V1/V2/Editor. Runs in your browser.</p>
+  </div>
+  <div class="seg" role="tablist" aria-label="Colour theme">
+    <button id="thDark" role="tab" aria-selected="true">Dark</button>
+    <button id="thLight" role="tab" aria-selected="false">Light</button>
+  </div>
+</header>
+
+<!-- ───────────────────────── source + jobs ───────────────────────── -->
+<section class="card">
+  <h2>Source</h2>
+  <p class="hint">Add <code>.tci</code> files or a whole folder. One file and a library both work the same way.</p>
+  <div class="srcgrid">
+    <div>
+      <label for="files">Files</label>
+      <input type="file" id="files" accept=".tci" multiple>
+    </div>
+    <div>
+      <label for="folder">Folder</label>
+      <input type="file" id="folder" webkitdirectory directory multiple>
+    </div>
+  </div>
+  <div class="btnrow">
+    <button class="primary" id="go">Convert</button>
+    <button id="cancel" hidden>Cancel</button>
+    <button id="clear" class="ghost" hidden>Clear</button>
+    <a id="dl" download hidden><button class="ghost" type="button">Download ZIP</button></a>
+    <span class="chip" id="pickChip"></span>
+  </div>
+  <div class="status" id="st"></div>
+  <div class="bar" id="bar" hidden><i></i></div>
+</section>
+
+<section class="card">
+  <h2>Jobs</h2>
+  <p class="hint">Family and MIC come from the path. Edit either one to rename; the output path updates as you type.</p>
+  <div class="btnrow tight">
+    <button id="rederive">Re-derive names</button>
+    <button id="removeSel" hidden>Remove selected</button>
+  </div>
+  <div class="tablewrap" id="jobWrap" hidden>
+    <table>
+      <thead><tr>
+        <th style="width:26px"><input type="checkbox" id="checkAll" aria-label="Select all"></th>
+        <th>File</th><th>Family</th><th>MIC</th><th>Output path</th>
+        <th class="num">Waves</th><th class="num">Stereo</th><th>State</th><th></th>
+      </tr></thead>
+      <tbody id="jobRows"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ───────────────────────── preview + results ───────────────────────── -->
+<section class="card">
+  <h2>Preview &amp; results</h2>
+  <p class="hint">Any converted wave can be auditioned. Preview gain does not affect exports.</p>
+
+  <div class="preview">
+    <audio id="player" controls preload="none"></audio>
+    <div class="pv-meta">
+      <span id="nowPlaying">Nothing loaded</span>
+      <span>peak <b id="peakDb">n/a</b></span>
+    </div>
+    <div class="peak"><i id="peakBar"></i></div>
+    <div class="pv-ctrl">
+      <div class="volbox">
+        <div class="volrow"><span>Preview volume</span><b><span id="volPct">35</span>% · <span id="volDb">-9.1</span> dB</b></div>
+        <input type="range" id="vol" min="0" max="100" step="1" value="35" aria-label="Preview volume">
+      </div>
+      <div class="pv-btns">
+        <button id="stopAll" class="ghost">Stop</button>
+        <label style="margin:0;display:flex;align-items:center;gap:6px;font-weight:400;font-size:12px">
+          <input type="checkbox" id="fadeIn" checked> soft start
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="tablewrap" id="resWrap" hidden>
+    <table>
+      <thead><tr><th></th><th>File</th><th>Ch</th><th>Wave</th><th>Grade</th><th>Peak</th><th>Parse</th></tr></thead>
+      <tbody id="resRows"></tbody>
+    </table>
+  </div>
+
+  <details id="mapDetails">
+    <summary>MAP.txt</summary>
+    <pre id="mapview"></pre>
+  </details>
+</section>
+
+<section class="card foot">
+  <strong>Grading.</strong>
+  <div class="legend">
+    <span><span class="grade g-A">A</span> exact &amp; smooth</span>
+    <span><span class="grade g-B">B</span> close, or stereo</span>
+    <span><span class="grade g-C">C</span> verify by ear</span>
+    <span><span class="grade g-X">X</span> skipped</span>
+  </div>
+  <p style="margin:12px 0 0">
+    <strong>Naming.</strong> <code>FAMILY_MIC_V##_RR#.wav</code>. V is velocity by attack peak, RR is the round robin within a level.
+  </p>
+  <p style="margin:8px 0 0">
+    <strong>Stereo.</strong> Tails decode exactly. The first ~2&nbsp;ms uses an undecoded path and is left
+    silent. MAP.txt lists how many frames.
+  </p>
+  <p style="margin:8px 0 0">
+    Method: <a href="https://github.com/AidanScroggins/tci2wav/blob/main/WRITEUP.md">WRITEUP.md</a>
+    &middot; code: <a href="https://github.com/AidanScroggins/tci2wav">github.com/AidanScroggins/tci2wav</a>
+  </p>
+</section>
+
+</div>
+<script>window.__TCI_WORKER_URL = URL.createObjectURL(new Blob(["/* TCI decode primitives: V1/V2 containers, sign-magnitude bitstream,\n   specs (raw/blk/blocks/tail8), voice rule. Port of py/tci_decode.py.\n   Works in browsers (plain script) and Node (module.exports). */\n(function (root, factory) {\n  if (typeof module !== 'undefined' && module.exports) module.exports = factory();\n  else root.TCIDecode = factory();\n}(typeof self !== 'undefined' ? self : this, function () {\n  'use strict';\n\n  const BLOCK_SAMPLES = 201;\n  const MAX_K = 24;\n\n  function sm24(b0, b1, b2) {\n    const v = (b0 << 16) | (b1 << 8) | b2;\n    return (v & 0x800000) ? -(v & 0x7FFFFF) : v;\n  }\n\n  // k-bit sign-magnitude field at bit pos (MSB-first). Returns [value, nextPos].\n  // k=1 always decodes to 0: a lone bit carries no magnitude.\n  function readSM(u8, pos, k) {\n    let mag = 0;\n    const sign = bitAt(u8, pos) ? -1 : 1;\n    for (let i = 1; i < k; i++) mag = (mag << 1) | bitAt(u8, pos + i);\n    return [sign < 0 && mag !== 0 ? -mag : (sign < 0 ? -0 : mag), pos + k];\n  }\n\n  function bitAt(u8, pos) {\n    return (u8[pos >> 3] >> (7 - (pos & 7))) & 1;\n  }\n\n  function byteAt(u8, pos) {\n    let v = 0;\n    for (let i = 0; i < 8; i++) v = (v << 1) | bitAt(u8, pos + i);\n    return v;\n  }\n\n  function bitsOf(u8) {\n    return { u8, len: u8.length * 8 };\n  }\n\n  function latin1(u8) {\n    let s = '';\n    for (let i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]);\n    return s;\n  }\n\n  function parseAttrs(xml) {\n    const m = /<trigger_instrument([^>]+)>/.exec(xml);\n    if (!m) return null;\n    const attrs = {};\n    const re = /(\\S+)=\"([^\"]*)\"/g;\n    let g;\n    while ((g = re.exec(m[1])) !== null) attrs[g[1]] = g[2];\n    return attrs;\n  }\n\n  // Decode a V1 residual stream: a chain of [k:8][201 x k-bit] blocks starting\n  // at bit offset `bitPos`, stopping once `count` samples have been produced.\n  // The stream must consume exactly `comp` bits relative to `bitPos` and yield\n  // exactly `count` samples, or the result is null. Shared by the V1 and Editor\n  // containers.\n  function v1Stream(u8, bitPos, comp, count) {\n    const out = new Float64Array(count);\n    const end = bitPos + comp;\n    let pos = bitPos;\n    let n = 0;\n    while (n < count) {\n      if (pos + 8 > end) return null;\n      const k = byteAt(u8, pos);\n      if (k < 1 || k > MAX_K) return null;\n      pos += 8;\n      const take = Math.min(BLOCK_SAMPLES, count - n);\n      if (pos + take * k > end) return null;\n      for (let i = 0; i < take; i++, n++) out[n] = readSM(u8, pos + i * k, k)[0];\n      pos += take * k;\n    }\n    return pos === end ? out : null;\n  }\n\n  // Inflate a zlib stream with the platform decoder (no third-party code).\n  // Engine conventions differ ('deflate' = zlib-wrapped in Chrome/Deno,\n  // raw in spec/Firefox), so try wrapped first, then stripped raw.\n  async function runDS(fmt, input) {\n    const ds = new DecompressionStream(fmt);\n    return new Uint8Array(await new Response(\n      new Blob([input]).stream().pipeThrough(ds)).arrayBuffer());\n  }\n\n  async function inflateZlib(u8) {\n    const data = u8 instanceof Uint8Array ? u8 : new Uint8Array(u8);\n    try {\n      return await runDS('deflate', data);\n    } catch (e) {\n      const raw = (data.length > 6 && data[0] === 0x78)\n        ? data.slice(2, data.length - 4) : data;\n      return await runDS('deflate-raw', raw);\n    }\n  }\n\n  async function parseV2(u8) {\n    try {\n      const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);\n      const audioLen = dv.getUint32(64, true);\n      const blob = u8.subarray(76, 76 + audioLen);\n      const foot = u8.subarray(76 + audioLen);\n      const dec = await inflateZlib(foot.subarray(8));\n      if (!(dec[0] === 0x56 && dec[1] === 0x43 && dec[2] === 0x32 && dec[3] === 0x21)) return null;\n      let xml;\n      try {\n        xml = new TextDecoder('utf-8', { fatal: true }).decode(dec.subarray(8));\n      } catch (e) {\n        xml = latin1(dec.subarray(8));\n      }\n      const attrs = parseAttrs(xml);\n      if (!attrs || !attrs.data_count) return null;\n      const waves = [];\n      let off = 0;\n      const n = parseInt(attrs.data_count, 10);\n      for (let i = 0; i < n; i++) {\n        const comp = parseInt(attrs['wd' + i + 'comp1'], 10);\n        const fr = parseInt(attrs['wd' + i + 'frames'], 10);\n        if (!isFinite(comp) || !isFinite(fr)) return null;\n        const nb = Math.ceil(comp / 8);\n        const smp = parseInt(attrs['wd' + i + 'samples'], 10);\n        waves.push({ comp, frames: fr, stereo: attrs['wd' + i + 'stereo'] || '?',\n                     // Footer joint-sample count: frames for mono, 2 * frames\n                     // for stereo. Informational; the stereo decoder derives\n                     // the total from `frames`.\n                     samples: isFinite(smp) ? smp : fr,\n                     blob: blob.subarray(off, off + nb) });\n        off += nb;\n      }\n      return waves;\n    } catch (e) {\n      return null;\n    }\n  }\n\n  // Trigger Instrument Editor variant (\"COMPRESSED INSTRUMENT\" tag):\n  // 128-byte file header, then waves chained by 8-byte gap records\n  // [05][prev_wave_span_bytes LE] ... [06][0] + params footer to EOF.\n  // Each wave: [01][comp u32 LE][frames u32 LE][V1 residual blocks].\n  function parseEditor(u8) {\n    if (u8.length < 128) return null;\n    if (!(u8[0] === 0x54 && u8[1] === 0x52 && u8[2] === 0x49 && u8[3] === 0x47 &&\n          u8[4] === 0x47 && u8[5] === 0x45 && u8[6] === 0x52 && u8[7] === 0x20)) return null;\n    let tag = '';\n    for (let i = 8; i < 64 && u8[i]; i++) tag += String.fromCharCode(u8[i]);\n    if (tag.indexOf('COMPRESSED') !== 0) return null;\n    const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);\n    const waves = [];\n    let pos = 128;\n    for (let w = 0; w < 256; w++) {\n      if (pos + 9 > u8.length || u8[pos] !== 0x01) break;\n      const comp = dv.getUint32(pos + 1, true);\n      const fr = dv.getUint32(pos + 5, true);\n      if (!(comp > 0 && fr > 1 && fr < 1e7)) break;\n      const base = pos + 9;\n      const blen = Math.ceil(comp / 8);\n      if (base + blen > u8.length) break;\n      const samples = v1Stream(u8, base * 8, comp, fr - 1);\n      if (!samples) break;\n      waves.push({ comp, frames: fr, stereo: '0-ed', samples: fr, v1: samples });\n      pos = base + blen;\n      if (pos + 8 > u8.length) break;\n      const gt = u8[pos];\n      if (gt !== 0x05) break; // 0x06 footer: params table runs to EOF\n      pos += 8;\n    }\n    return waves.length ? waves : null;\n  }\n\n  // Oracle-shaped V1 single wave: [01][comp u32][frames u32] then a V1\n  // residual stream. Tries big- then little-endian header.\n  function parseV1(u8) {\n    if (!u8.length || u8[0] !== 0x01) return null;\n    const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);\n    for (const le of [false, true]) {\n      let comp, fr;\n      try {\n        comp = dv.getUint32(1, le);\n        fr = dv.getUint32(5, le);\n      } catch (e) { continue; }\n      if (!(comp > 0 && comp <= 8 * (u8.length - 9))) continue;\n      if (!(fr > 1 && fr < 1e7)) continue;\n      const samples = v1Stream(u8, 9 * 8, comp, fr - 1);\n      if (samples) {\n        return [{ comp, frames: fr, stereo: '0-x', samples: fr, v1: samples }];\n      }\n    }\n    return null;\n  }\n\n  // V1 201-count blocks from bit pos. Returns {samples:Array, endpos}.\n  function decodeBlocks(u8, bitlen, pos) {\n    const out = [];\n    while (pos + 8 <= bitlen) {\n      const k = byteAt(u8, pos);\n      if (!(k >= 1 && k <= MAX_K)) break;\n      pos += 8;\n      let n = BLOCK_SAMPLES;\n      if (pos + n * k > bitlen) n = Math.floor((bitlen - pos) / k);\n      if (n <= 0) break;\n      for (let i = 0; i < n; i++) {\n        const r = readSM(u8, pos, k);\n        pos = r[1];\n        out.push(r[0] === 0 ? 0 : r[0]); // normalize -0\n      }\n    }\n    return { samples: out, endpos: pos };\n  }\n\n  // spec: ['raw',n] | ['blk',S,k,C,T] | ['blocks',[[k,C]..],T] | ['tail8',T0?]\n  function decodeWave(wblob, frames, spec) {\n    const w = wblob instanceof Uint8Array ? wblob : new Uint8Array(wblob);\n    const kind = spec[0];\n    if (kind === 'raw') {\n      const nraw = spec[1];\n      const raw = [];\n      for (let i = 0; i < 3 * nraw; i += 3) raw.push(sm24(w[i], w[i + 1], w[i + 2]));\n      const t2 = decodeBlocks(w.subarray(3 * nraw), (w.length - 3 * nraw) * 8, 0);\n      return raw.concat(t2.samples);\n    }\n    if (kind === 'tail8') {\n      const T0 = spec.length > 1 ? spec[1] : 8;\n      return decodeBlocks(w, w.length * 8, T0).samples;\n    }\n    if (kind === 'blk') {\n      const S = spec[1], k = spec[2], C = spec[3], T = spec[4];\n      const atk = [];\n      for (let i = 0; i < C; i++) {\n        const r = readSM(w, S + 8 + i * k, k);\n        atk.push(r[0] === 0 ? 0 : r[0]);\n      }\n      return atk.concat(decodeBlocks(w, w.length * 8, T).samples);\n    }\n    if (kind === 'blocks') {\n      const blks = spec[1], T = spec[2];\n      let p = 0;\n      const out = [];\n      for (const [k, C] of blks) {\n        p += 8;\n        for (let i = 0; i < C; i++) {\n          const r = readSM(w, p, k);\n          p = r[1];\n          out.push(r[0] === 0 ? 0 : r[0]);\n        }\n      }\n      return out.concat(decodeBlocks(w, w.length * 8, T).samples);\n    }\n    throw new Error('bad spec');\n  }\n\n  function applyVoiceRule(vec, frames) {\n    const out = new Float64Array(frames);\n    const n = Math.min(vec.length, frames);\n    for (let i = 0; i < n; i++) out[i] = vec[i];\n    return out;\n  }\n\n  return { sm24, readSM, bitAt, byteAt, bitsOf, parseV2, parseV1, parseEditor,\n           v1Stream, decodeBlocks, decodeWave, applyVoiceRule };\n}));\n\n/* Structural solver for unknown MONO waves (raw head / identity block chains /\n   single attack block / tail-from-zeros). Port of py/solve_wave.py +\n   render_library.solve_wave. Stereo waves go through stereo.js instead. */\n(function (root, factory) {\n  if (typeof module !== 'undefined' && module.exports) {\n    module.exports = factory(require('./decode.js'));\n  } else {\n    root.TCISolve = factory(root.TCIDecode);\n  }\n}(typeof self !== 'undefined' ? self : this, function (D) {\n  'use strict';\n\n  // Width bytes seen in mono attack-block heads, mapped to the bit width the\n  // decoder actually uses. Tail bytes are identity (byte == k). See WRITEUP.md.\n  const KMAP = { 145: 23, 149: 23, 29: 23, 62: 23, 75: 23, 142: 20, 22: 21,\n                 140: 21, 129: 20, 191: 20, 20: 20, 24: 24 };\n\n  // Bit offsets that start long `count`-sample V1 chains, longest first.\n  // The longest run is not always the true tail start: a misframed first block\n  // can extend a run backwards over head data, so every hit still needs a\n  // length + smoothness check before it is trusted (see solveWave).\n  function runScan(u8, bitlen, lo, hi, minRun, count) {\n    lo = lo || 0; hi = hi || 60000; minRun = minRun || 10; count = count || 201;\n    const out = [];\n    const end = Math.min(hi, bitlen - 8);\n    for (let pos = lo; pos < end; pos++) {\n      const k0 = D.byteAt(u8, pos);\n      if (!(k0 >= 1 && k0 <= 24)) continue;\n      let run = 0, p = pos;\n      while (p + 8 <= bitlen) {\n        const k = D.byteAt(u8, p);\n        if (!(k >= 1 && k <= 24)) break;\n        if (p + 8 + count * k > bitlen) { run += 0.5; break; }\n        p += 8 + count * k;\n        run += 1;\n        if (run > 600) break;\n      }\n      if (run >= minRun) out.push([run, pos]);\n    }\n    out.sort((a, b) => b[0] - a[0]);\n    return out;\n  }\n\n  function tailCount(u8, bitlen, T, count) {\n    count = count || 201;\n    let pos = T, cnt = 0;\n    while (pos + 8 <= bitlen) {\n      const k = D.byteAt(u8, pos);\n      if (!(k >= 1 && k <= 24)) break;\n      pos += 8;\n      let n = count;\n      if (pos + n * k > bitlen) n = Math.floor((bitlen - pos) / k);\n      if (n <= 0) break;\n      pos += n * k;\n      cnt += n;\n    }\n    return { cnt, endpos: pos };\n  }\n\n  function decodeSpan(u8, pos, k, C) {\n    const out = new Float64Array(C);\n    for (let i = 0; i < C; i++) {\n      const r = D.readSM(u8, pos, k);\n      pos = r[1];\n      out[i] = r[0] === 0 ? 0 : r[0];\n    }\n    return out;\n  }\n\n  function smoothScore(seg, k) {\n    if (seg.length < 8) return 9.0;\n    let s = 0;\n    for (let i = 1; i < seg.length; i++) s += Math.abs(seg[i] - seg[i - 1]);\n    return (s / (seg.length - 1)) / Math.pow(2, k - 1);\n  }\n\n  function tailEndOk(endp, L, tol) {\n    return endp >= L - (tol === undefined ? 64 : tol);\n  }\n\n  // Returns {spec, grade, note} or {spec:null,...}. Mirrors solve_wave().\n  function solveWave(wblob, fr) {\n    const w = wblob instanceof Uint8Array ? wblob : new Uint8Array(wblob);\n    const bitlen = w.length * 8;\n    const raw = new Float64Array(200);\n    for (let i = 0; i < 200; i++) raw[i] = D.sm24(w[3 * i], w[3 * i + 1], w[3 * i + 2]);\n    let rmad = 0;\n    for (let i = 1; i < 200; i++) rmad += Math.abs(raw[i] - raw[i - 1]);\n    rmad = (rmad / 199) / Math.pow(2, 23);\n    if (rmad < 0.25) {\n      const t = D.decodeBlocks(w.subarray(600), (w.length - 600) * 8, 0);\n      const over = 200 + t.samples.length - fr;\n      if (over >= -2 && tailEndOk(4800 + t.endpos, bitlen)) {\n        return { spec: ['raw', 200], grade: 'A',\n                 note: `raw200 mad=${rmad.toFixed(3)} over=${over}` };\n      }\n    }\n    // multi identity-chain prefixes from bit 0\n    let p = 0;\n    const blks = [];\n    while (p + 8 <= bitlen && blks.length < 12) {\n      const k = D.byteAt(w, p);\n      if (!(k >= 1 && k <= 24) || p + 8 + 201 * k > bitlen) break;\n      blks.push([k, 201, p]);\n      p += 8 + 201 * k;\n    }\n    for (let n = Math.min(blks.length, 12); n >= 2; n--) {\n      const pre = blks.slice(0, n);\n      const Tp = pre[n - 1][2] + 8 + 201 * pre[n - 1][0];\n      const t = tailCount(w, bitlen, Tp);\n      let sum = 0;\n      for (const b of pre) sum += b[1];\n      const over = sum + t.cnt - fr;\n      if (over >= -2 && over <= 44 && tailEndOk(t.endpos, bitlen)) {\n        return { spec: ['blocks', pre.map(b => [b[0], b[1]]), Tp], grade: 'A',\n                 note: `${n}x identity blocks over=${over}` };\n      }\n    }\n    // single-block fits\n    const cands = [], k1cands = [];\n    for (const [, T] of runScan(w, bitlen, 0, 60000, 10, 201)) {\n      const t = tailCount(w, bitlen, T);\n      if (!tailEndOk(t.endpos, bitlen)) continue;\n      const lo = Math.max(8, fr - t.cnt - 8);\n      for (let C = lo; C <= fr - t.cnt + 44; C++) {\n        for (let k = 1; k <= 24; k++) {\n          const S = T - 8 - C * k;\n          if (S < 0 || S > 6000) continue;\n          const sc = smoothScore(decodeSpan(w, S + 8, k, C), k);\n          if (sc >= 0.15) continue;\n          const b = D.byteAt(w, S);\n          if (k === 1) {\n            k1cands.push([S, Math.abs(C + t.cnt - fr), C, T, b, sc]);\n          } else {\n            const bonus = (b === k) || (KMAP[b] === k);\n            cands.push([bonus, S, Math.abs(C + t.cnt - fr), C, k, T, b, sc]);\n          }\n        }\n      }\n    }\n    let best = null;\n    if (cands.length) {\n      cands.sort((a, b2) => ((!a[0]) - (!b2[0])) || (a[1] - b2[1]) || (a[2] - b2[2]));\n      const [, S, , C, k, T, b, sc] = cands[0];\n      const over = C + tailCount(w, bitlen, T).cnt - fr;\n      const grade = (over === 0 && sc < 0.08) ? 'A' : (Math.abs(over) <= 2 ? 'B' : 'C');\n      best = { spec: ['blk', S, k, C, T], grade,\n               note: `C=${C} k=${k} S=${S} T=${T} byte=${b} over=${over} sm=${sc.toFixed(2)}` };\n    } else if (k1cands.length) {\n      k1cands.sort((a, b2) => (a[0] - b2[0]) || (a[1] - b2[1]));\n      const [, , C, T, b, sc] = k1cands[0];\n      const over = C + tailCount(w, bitlen, T).cnt - fr;\n      best = { spec: ['blk', T - 8 - C, 1, C, T], grade: 'C',\n               note: `C=${C} k=1 S=${T - 8 - C} T=${T} byte=${b} over=${over} sm=${sc.toFixed(2)} (silence?)` };\n    }\n    // tailN: leading zero bytes + V1 tail. Preferred over k==1 silence.\n    let tailn = null;\n    let Z = 0;\n    while (Z < 4 && w[Z] === 0) Z++;\n    if (Z) {\n      const T0 = 8 * Z;\n      const t = tailCount(w, bitlen, T0);\n      const over = t.cnt - fr;\n      if (over >= -8 && over <= 44 && tailEndOk(t.endpos, bitlen)) {\n        const kk = D.byteAt(w, T0);\n        if (kk >= 1 && kk <= 24) {\n          const sc = smoothScore(decodeSpan(w, T0, kk, 201), kk);\n          if (sc < 0.15) {\n            tailn = { spec: ['tail8', T0], grade: 'B',\n                      note: `tail-from-${T0} zeros=${Z} over=${over}` };\n          }\n        }\n      }\n    }\n    if (best && best.spec[0] === 'blk' && best.spec[2] === 1 && tailn) return tailn;\n    if (best) return best;\n    if (tailn) return tailn;\n    return { spec: null, grade: 'X', note: 'unsolved' };\n  }\n\n  return { KMAP, runScan, tailCount, decodeSpan, smoothScore, solveWave };\n}));\n\n/* Stereo (stereo=1) wave decoder.\n\n   Layout, as proven against the library (see WRITEUP.md section 5):\n     - The wave is one joint stream of `2 * frames` sign-magnitude samples\n       (the footer confirms it: wd{i}samples == 2 * wd{i}frames).\n     - Everything from `tailStart` on is a chain of V1 blocks,\n       [k:8][201 x k-bit samples], and that chain consumes the wave's bit\n       budget to within a few trailing pad bits.\n     - Sample N of the joint stream is L when N is even and R when N is odd,\n       counted over the WHOLE stream including the head. Because a block\n       holds an odd 201 samples, this parity alternates block by block;\n       deinterleaving by global index is what keeps the channels consistent.\n     - The first `head` joint samples (0..400 across the library, median 186,\n       i.e. ~93-100 frames or ~2 ms) come from a non-V1 head path that is not\n       decoded yet. They are left silent and reported, never guessed.\n\n   Works in browsers (plain script) and Node (module.exports). */\n(function (root, factory) {\n  if (typeof module !== 'undefined' && module.exports) module.exports = factory();\n  else root.TCIStereo = factory();\n}(typeof self !== 'undefined' ? self : this, function () {\n  'use strict';\n\n  const BLOCK_SAMPLES = 201;\n  const MAX_K = 24;\n\n  // The tail start never exceeded 7236 bits over the whole library; 64 kbit\n  // of headroom keeps the scan cheap without risking a miss.\n  const HEAD_SCAN_BITS = 65536;\n  // Loudest observed head was 400 joint samples. 4096 (~2k frames) still\n  // catches anything unusual while rejecting accidental early matches.\n  const HEAD_MAX_SAMPLES = 4096;\n  // Trailing slack between the chain end and wd{i}comp1 was at most 31 bits.\n  const TAIL_TOLERANCE_BITS = 64;\n\n  function asU8(x) {\n    return x instanceof Uint8Array ? x : new Uint8Array(x);\n  }\n\n  // 8-bit value starting at bit offset `pos` (MSB-first bitstream).\n  function byteAt(u8, pos) {\n    const j = pos >> 3, s = pos & 7;\n    let v = u8[j] << s;\n    if (s && j + 1 < u8.length) v |= u8[j + 1] >> (8 - s);\n    return v & 0xFF;\n  }\n\n  // k-bit sign-magnitude field at bit offset `pos`. k=1 always decodes to 0.\n  // s + k <= 31, so a 4-byte window and one unsigned shift are enough.\n  function readSM(u8, pos, k) {\n    const j = pos >> 3, s = pos & 7;\n    const a = j < u8.length ? u8[j] : 0;\n    const b = j + 1 < u8.length ? u8[j + 1] : 0;\n    const c = j + 2 < u8.length ? u8[j + 2] : 0;\n    const d = j + 3 < u8.length ? u8[j + 3] : 0;\n    const word = ((a << 24) | (b << 16) | (c << 8) | d) >>> 0;\n    const code = (word >>> (32 - s - k)) & ((1 << k) - 1);\n    const mag = code & ((1 << (k - 1)) - 1);\n    return (code & (1 << (k - 1))) && mag ? -mag : mag;\n  }\n\n  // Width byte at every bit offset below `nbits`, so scanning the head\n  // region does not re-derive bytes per candidate.\n  function bitByteTable(u8, nbits) {\n    const n = Math.min(nbits, u8.length * 8);\n    const t = new Uint8Array(n);\n    for (let i = 0; i < n; i++) {\n      const j = i >> 3, s = i & 7;\n      let v = u8[j] << s;\n      if (s && j + 1 < u8.length) v |= u8[j + 1] >> (8 - s);\n      t[i] = v & 0xFF;\n    }\n    return t;\n  }\n\n  // Walk V1 blocks from `start`, stopping once `count` would exceed `cap`.\n  // Returns {count, end} when the chain reaches `comp` (within tolerance),\n  // else null.\n  function walkTail(u8, kv, start, comp, cap, tol) {\n    let pos = start, count = 0;\n    const nearEnd = () => (pos >= comp - tol ? { count, end: pos } : null);\n    while (pos + 8 <= comp) {\n      const k = pos < kv.length ? kv[pos] : byteAt(u8, pos);\n      if (k < 1 || k > MAX_K) return nearEnd();\n      pos += 8;\n      let n = BLOCK_SAMPLES;\n      if (pos + n * k > comp) n = Math.floor((comp - pos) / k);\n      if (n <= 0) return nearEnd();\n      pos += n * k;\n      count += n;\n      if (count > cap) return null;\n    }\n    return nearEnd();\n  }\n\n  // Locate the tail: the earliest bit offset from which a V1 block chain reaches\n  // the end of the bit budget while leaving at most HEAD_MAX_SAMPLES joint\n  // samples unexplained. Every block boundary inside a real tail qualifies, so\n  // the smallest head wins. Chance matches inside the head do exist (its bits\n  // are high-entropy audio, and ~9% of byte values look like a width byte) but\n  // a real chain has to survive millions of bits to the end of the wave to\n  // qualify, which they never do: 3902/3902 waves decode with the smallest\n  // head in range.\n  function findTail(u8, comp, totalSamples) {\n    const kv = bitByteTable(u8, Math.min(HEAD_SCAN_BITS, comp));\n    let best = null;\n    for (let T = 0; T + 8 <= kv.length; T++) {\n      const k = kv[T];\n      if (k < 1 || k > MAX_K) continue;\n      const w = walkTail(u8, kv, T, comp, totalSamples, TAIL_TOLERANCE_BITS);\n      if (!w) continue;\n      const head = totalSamples - w.count;\n      if (head < 0 || head > HEAD_MAX_SAMPLES) continue;\n      if (!best || head < best.head) best = { tailStart: T, count: w.count, end: w.end, head };\n    }\n    return best;\n  }\n\n  // Joint V1 stream between two bit offsets, exactly `count` samples long.\n  function decodeJoint(u8, start, end, count) {\n    const out = new Float64Array(count);\n    let pos = start, n = 0;\n    while (pos + 8 <= end && n < count) {\n      const k = byteAt(u8, pos);\n      if (k < 1 || k > MAX_K) break;\n      pos += 8;\n      let m = Math.min(BLOCK_SAMPLES, count - n, Math.floor((end - pos) / k));\n      for (let i = 0; i < m; i++, n++) out[n] = readSM(u8, pos + i * k, k);\n      pos += m * k;\n    }\n    return out;\n  }\n\n  // Returns {L, R, headSamples, headFrames, tailStart} or null when no tail\n  // chain explains the wave. L/R hold exactly `frames` samples each; the\n  // unresolved head frames stay silent at the front.\n  function decodeStereo(wblob, comp, frames) {\n    const u8 = asU8(wblob);\n    if (!(comp > 0) || !(frames > 0)) return null;\n    const t = findTail(u8, comp, 2 * frames);\n    if (!t) return null;\n    const joint = decodeJoint(u8, t.tailStart, t.end, t.count);\n    const L = new Float64Array(frames);\n    const R = new Float64Array(frames);\n    // Frame j owns global joint samples 2j (L) and 2j+1 (R); global index g\n    // sits at tail index g - head, so anything below `head` is a sample the\n    // undecoded head path should have supplied and is left silent.\n    for (let j = 0; j < frames; j++) {\n      const i = 2 * j - t.head;\n      if (i >= 0) L[j] = joint[i];\n      if (i + 1 >= 0) R[j] = joint[i + 1];\n    }\n    return {\n      L,\n      R,\n      headSamples: t.head,\n      headFrames: Math.ceil(t.head / 2),\n      tailStart: t.tailStart,\n      tailSamples: t.count,\n    };\n  }\n\n  return {\n    BLOCK_SAMPLES,\n    MAX_K,\n    HEAD_SCAN_BITS,\n    HEAD_MAX_SAMPLES,\n    TAIL_TOLERANCE_BITS,\n    byteAt,\n    readSM,\n    bitByteTable,\n    walkTail,\n    findTail,\n    decodeJoint,\n    decodeStereo,\n  };\n}));\n/* Velocity grouping, V/RR naming, WAV + MAP output, stereo decoding.\n   Port of the export half of py/tci_export.py. Browser + Node. */\n(function (root, factory) {\n  if (typeof module !== 'undefined' && module.exports) {\n    module.exports = factory(require('./decode.js'), require('./solve.js'),\n                             require('./stereo.js'));\n  } else {\n    root.TCIExport = factory(root.TCIDecode, root.TCISolve, root.TCIStereo);\n  }\n}(typeof self !== 'undefined' ? self : this, function (D, S, ST) {\n  'use strict';\n\n  const RR_RATIO = 1.12;\n  const ATK_N = 5000;\n\n  function attackPeak(vec) {\n    const n = Math.min(vec.length, ATK_N);\n    let m = 0;\n    for (let i = 0; i < n; i++) {\n      const a = Math.abs(vec[i]);\n      if (a > m) m = a;\n    }\n    return m;\n  }\n\n  // Stereo waves decode exactly from their V1 tail; the ~2 ms attack head uses\n  // a path that is not cracked, so those frames stay silent and the gap is\n  // reported rather than guessed. `comp` is the footer's used-bit count.\n  function decodeStereoWave(blob, comp, frames) {\n    const r = ST.decodeStereo(blob, comp, frames);\n    if (!r) return null;\n    return {\n      L: r.L,\n      R: r.R,\n      peak: Math.max(attackPeak(r.L), attackPeak(r.R)),\n      grade: 'B',\n      note: `stereo tail@bit${r.tailStart}/${r.tailSamples}sm`\n        + (r.headFrames ? ` head:${r.headFrames}fr silent` : ' head:none'),\n      headFrames: r.headFrames,\n    };\n  }\n\n  function pack24LE(v) {\n    const iv = Math.max(-8388608, Math.min(8388607, Math.round(v))) & 0xFFFFFF;\n    return [iv & 255, (iv >> 8) & 255, (iv >> 16) & 255];\n  }\n\n  function wavHeader(nCh, nFrames) {\n    const h = new Uint8Array(44);\n    const dv = new DataView(h.buffer);\n    const ws = (o, s) => { for (let i = 0; i < s.length; i++) h[o + i] = s.charCodeAt(i); };\n    ws(0, 'RIFF');\n    dv.setUint32(4, 36 + nFrames * nCh * 3, true);\n    ws(8, 'WAVEfmt ');\n    dv.setUint32(16, 16, true);\n    dv.setUint16(20, 1, true);\n    dv.setUint16(22, nCh, true);\n    dv.setUint32(24, 44100, true);\n    dv.setUint32(28, 44100 * nCh * 3, true);\n    dv.setUint16(32, nCh * 3, true);\n    dv.setUint16(34, 24, true);\n    ws(36, 'data');\n    dv.setUint32(40, nFrames * nCh * 3, true);\n    return h;\n  }\n\n  function exportMonoWav(vec) {\n    const n = vec.length;\n    const out = new Uint8Array(44 + n * 3);\n    out.set(wavHeader(1, n), 0);\n    for (let i = 0; i < n; i++) {\n      const [a, b, c] = pack24LE(vec[i]);\n      out[44 + 3 * i] = a; out[44 + 3 * i + 1] = b; out[44 + 3 * i + 2] = c;\n    }\n    return out;\n  }\n\n  function exportStereoWav(L, R) {\n    const n = Math.min(L.length, R.length);\n    const out = new Uint8Array(44 + n * 6);\n    out.set(wavHeader(2, n), 0);\n    for (let i = 0; i < n; i++) {\n      const [a, b, c] = pack24LE(L[i]);\n      const [d, e, f] = pack24LE(R[i]);\n      out.set([a, b, c, d, e, f], 44 + 6 * i);\n    }\n    return out;\n  }\n\n  // waves: [{comp,frames,stereo,blob,v1?}]. Returns {files, skipped, mapText}.\n  // files: [{name, wave, channels, grade, peak, note, wav:Uint8Array}]\n  function exportWaves(waves, family, mic) {\n    const items = [];\n    waves.forEach((wv, i) => {\n      const wave = `wave${String(i).padStart(2, '0')}`;\n      try {\n        if (String(wv.stereo).startsWith('1')) {\n          const r = decodeStereoWave(wv.blob, wv.comp, wv.frames);\n          if (!r) {\n            items.push({ pk: 0, i, wave, kind: 'skip', payload: null, channels: 2,\n                         grade: 'X', note: 'no V1 tail chain reaches end-of-bits' });\n            return;\n          }\n          items.push({ pk: r.peak, i, wave, kind: 'stereo', payload: [r.L, r.R],\n                       channels: 2, grade: r.grade, note: r.note });\n          return;\n        }\n        if (wv.v1) {\n          const v = D.applyVoiceRule(wv.v1, wv.frames);\n          items.push({ pk: attackPeak(v), i, wave, kind: 'mono', payload: v,\n                       channels: 1, grade: 'A', note: 'V1 single' });\n          return;\n        }\n        const r = S.solveWave(wv.blob, wv.frames);\n        if (!r.spec) {\n          items.push({ pk: 0, i, wave, kind: 'skip', payload: null, channels: 1,\n                       grade: r.grade, note: r.note });\n          return;\n        }\n        const v = D.applyVoiceRule(D.decodeWave(wv.blob, wv.frames, r.spec), wv.frames);\n        items.push({ pk: attackPeak(v), i, wave, kind: 'mono', payload: v,\n                     channels: 1, grade: r.grade, note: r.note });\n      } catch (e) {\n        items.push({ pk: 0, i, wave, kind: 'skip', payload: null, channels: 1,\n                     grade: 'X', note: 'crash: ' + e.message });\n      }\n    });\n    const ranked = items.filter(it => it.kind !== 'skip').sort((a, b) => a.pk - b.pk);\n    const groups = [];\n    let cur = [];\n    for (const it of ranked) {\n      const mx = cur.reduce((m, x) => Math.max(m, x.pk), 0);\n      if (cur.length && it.pk / Math.max(mx, 1e-9) >= RR_RATIO) {\n        groups.push(cur);\n        cur = [];\n      }\n      cur.push(it);\n    }\n    if (cur.length) groups.push(cur);\n    const files = [];\n    groups.forEach((grp, vi) => {\n      grp.sort((a, b) => a.pk - b.pk).forEach((it, ri) => {\n        const fn = `${family}_${mic}_V${String(vi + 1).padStart(2, '0')}_RR${ri + 1}.wav`;\n        const wav = it.kind === 'stereo'\n          ? exportStereoWav(it.payload[0], it.payload[1])\n          : exportMonoWav(it.payload);\n        files.push({ name: fn, wave: it.wave, channels: it.channels,\n                     grade: it.grade, peak: peakOf(it), note: it.note, wav });\n      });\n    });\n    const skipped = items.filter(it => it.kind === 'skip')\n      .map(it => ({ name: null, wave: it.wave, channels: it.channels,\n                    grade: it.grade, peak: null, note: it.note }));\n    const tag = (c) => (c === 2 ? 'st' : 'mono');\n    const lines = files.map(f => `${f.name} <- ${f.wave} [${f.grade}] ${tag(f.channels)} peak=${f.peak} ${f.note}`)\n      .concat(skipped.map(s => `-- ${s.wave} [${s.grade}] ${tag(s.channels)} ${s.note}`));\n    return { files, skipped, mapText: lines.join('\\n') + '\\n' };\n  }\n\n  function peakOf(it) {\n    let m = 0;\n    const seqs = it.kind === 'stereo' ? it.payload : [it.payload];\n    for (const v of seqs) for (let i = 0; i < v.length; i++) {\n      const a = Math.abs(v[i]);\n      if (a > m) m = a;\n    }\n    return Math.round(m);\n  }\n\n  return { RR_RATIO, ATK_N, attackPeak, decodeStereoWave, exportMonoWav,\n           exportStereoWav, exportWaves };\n}));\n\n/* Web Worker: decode off the main thread. */\n\n\nonmessage = async function (e) {\n  const { id, family, mic, buffer } = e.data;\n  try {\n    const u8 = new Uint8Array(buffer);\n    let waves = await TCIDecode.parseV2(u8);\n    if (!waves) waves = TCIDecode.parseV1(u8);\n    if (!waves) waves = TCIDecode.parseEditor(u8);\n    if (!waves) {\n      postMessage({ id, ok: false, error: 'unrecognized file (not V1, V2, or Editor TCI)' });\n      return;\n    }\n    const r = TCIExport.exportWaves(waves, family, mic);\n    const files = r.files.map(f => ({\n      name: f.name, wave: f.wave, channels: f.channels, grade: f.grade,\n      peak: f.peak, note: f.note, wav: f.wav.buffer\n    }));\n    const skipped = r.skipped.map(s => ({\n      name: null, wave: s.wave, channels: s.channels, grade: s.grade,\n      peak: null, note: s.note\n    }));\n    const xfer = files.map(f => f.wav);\n    const stereo = files.filter(f => f.channels === 2).length;\n    const summary = `${files.length} WAVs + MAP.txt (${r.skipped.length} skipped`\n      + (stereo ? `, ${stereo} stereo` : '') + ')';\n    postMessage({ id, ok: true, files: files.concat(skipped), map: r.mapText, summary }, xfer);\n  } catch (err) {\n    postMessage({ id, ok: false, error: String(err && err.message || err) });\n  }\n};\n"], {type: 'application/javascript'}));</script>
+<script>
+/* TCI decode primitives: V1/V2 containers, sign-magnitude bitstream,
+   specs (raw/blk/blocks/tail8), voice rule. Port of py/tci_decode.py.
+   Works in browsers (plain script) and Node (module.exports). */
+(function (root, factory) {
+  if (typeof module !== 'undefined' && module.exports) module.exports = factory();
+  else root.TCIDecode = factory();
+}(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  const BLOCK_SAMPLES = 201;
+  const MAX_K = 24;
+
+  function sm24(b0, b1, b2) {
+    const v = (b0 << 16) | (b1 << 8) | b2;
+    return (v & 0x800000) ? -(v & 0x7FFFFF) : v;
+  }
+
+  // k-bit sign-magnitude field at bit pos (MSB-first). Returns [value, nextPos].
+  // k=1 always decodes to 0: a lone bit carries no magnitude.
+  function readSM(u8, pos, k) {
+    let mag = 0;
+    const sign = bitAt(u8, pos) ? -1 : 1;
+    for (let i = 1; i < k; i++) mag = (mag << 1) | bitAt(u8, pos + i);
+    return [sign < 0 && mag !== 0 ? -mag : (sign < 0 ? -0 : mag), pos + k];
+  }
+
+  function bitAt(u8, pos) {
+    return (u8[pos >> 3] >> (7 - (pos & 7))) & 1;
+  }
+
+  function byteAt(u8, pos) {
+    let v = 0;
+    for (let i = 0; i < 8; i++) v = (v << 1) | bitAt(u8, pos + i);
+    return v;
+  }
+
+  function bitsOf(u8) {
+    return { u8, len: u8.length * 8 };
+  }
+
+  function latin1(u8) {
+    let s = '';
+    for (let i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]);
+    return s;
+  }
+
+  function parseAttrs(xml) {
+    const m = /<trigger_instrument([^>]+)>/.exec(xml);
+    if (!m) return null;
+    const attrs = {};
+    const re = /(\S+)="([^"]*)"/g;
+    let g;
+    while ((g = re.exec(m[1])) !== null) attrs[g[1]] = g[2];
+    return attrs;
+  }
+
+  // Decode a V1 residual stream: a chain of [k:8][201 x k-bit] blocks starting
+  // at bit offset `bitPos`, stopping once `count` samples have been produced.
+  // The stream must consume exactly `comp` bits relative to `bitPos` and yield
+  // exactly `count` samples, or the result is null. Shared by the V1 and Editor
+  // containers.
+  function v1Stream(u8, bitPos, comp, count) {
+    const out = new Float64Array(count);
+    const end = bitPos + comp;
+    let pos = bitPos;
+    let n = 0;
+    while (n < count) {
+      if (pos + 8 > end) return null;
+      const k = byteAt(u8, pos);
+      if (k < 1 || k > MAX_K) return null;
+      pos += 8;
+      const take = Math.min(BLOCK_SAMPLES, count - n);
+      if (pos + take * k > end) return null;
+      for (let i = 0; i < take; i++, n++) out[n] = readSM(u8, pos + i * k, k)[0];
+      pos += take * k;
+    }
+    return pos === end ? out : null;
+  }
+
+  // Inflate a zlib stream with the platform decoder (no third-party code).
+  // Engine conventions differ ('deflate' = zlib-wrapped in Chrome/Deno,
+  // raw in spec/Firefox), so try wrapped first, then stripped raw.
+  async function runDS(fmt, input) {
+    const ds = new DecompressionStream(fmt);
+    return new Uint8Array(await new Response(
+      new Blob([input]).stream().pipeThrough(ds)).arrayBuffer());
+  }
+
+  async function inflateZlib(u8) {
+    const data = u8 instanceof Uint8Array ? u8 : new Uint8Array(u8);
+    try {
+      return await runDS('deflate', data);
+    } catch (e) {
+      const raw = (data.length > 6 && data[0] === 0x78)
+        ? data.slice(2, data.length - 4) : data;
+      return await runDS('deflate-raw', raw);
+    }
+  }
+
+  async function parseV2(u8) {
+    try {
+      const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+      const audioLen = dv.getUint32(64, true);
+      const blob = u8.subarray(76, 76 + audioLen);
+      const foot = u8.subarray(76 + audioLen);
+      const dec = await inflateZlib(foot.subarray(8));
+      if (!(dec[0] === 0x56 && dec[1] === 0x43 && dec[2] === 0x32 && dec[3] === 0x21)) return null;
+      let xml;
+      try {
+        xml = new TextDecoder('utf-8', { fatal: true }).decode(dec.subarray(8));
+      } catch (e) {
+        xml = latin1(dec.subarray(8));
+      }
+      const attrs = parseAttrs(xml);
+      if (!attrs || !attrs.data_count) return null;
+      const waves = [];
+      let off = 0;
+      const n = parseInt(attrs.data_count, 10);
+      for (let i = 0; i < n; i++) {
+        const comp = parseInt(attrs['wd' + i + 'comp1'], 10);
+        const fr = parseInt(attrs['wd' + i + 'frames'], 10);
+        if (!isFinite(comp) || !isFinite(fr)) return null;
+        const nb = Math.ceil(comp / 8);
+        const smp = parseInt(attrs['wd' + i + 'samples'], 10);
+        waves.push({ comp, frames: fr, stereo: attrs['wd' + i + 'stereo'] || '?',
+                     // Footer joint-sample count: frames for mono, 2 * frames
+                     // for stereo. Informational; the stereo decoder derives
+                     // the total from `frames`.
+                     samples: isFinite(smp) ? smp : fr,
+                     blob: blob.subarray(off, off + nb) });
+        off += nb;
+      }
+      return waves;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Trigger Instrument Editor variant ("COMPRESSED INSTRUMENT" tag):
+  // 128-byte file header, then waves chained by 8-byte gap records
+  // [05][prev_wave_span_bytes LE] ... [06][0] + params footer to EOF.
+  // Each wave: [01][comp u32 LE][frames u32 LE][V1 residual blocks].
+  function parseEditor(u8) {
+    if (u8.length < 128) return null;
+    if (!(u8[0] === 0x54 && u8[1] === 0x52 && u8[2] === 0x49 && u8[3] === 0x47 &&
+          u8[4] === 0x47 && u8[5] === 0x45 && u8[6] === 0x52 && u8[7] === 0x20)) return null;
+    let tag = '';
+    for (let i = 8; i < 64 && u8[i]; i++) tag += String.fromCharCode(u8[i]);
+    if (tag.indexOf('COMPRESSED') !== 0) return null;
+    const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+    const waves = [];
+    let pos = 128;
+    for (let w = 0; w < 256; w++) {
+      if (pos + 9 > u8.length || u8[pos] !== 0x01) break;
+      const comp = dv.getUint32(pos + 1, true);
+      const fr = dv.getUint32(pos + 5, true);
+      if (!(comp > 0 && fr > 1 && fr < 1e7)) break;
+      const base = pos + 9;
+      const blen = Math.ceil(comp / 8);
+      if (base + blen > u8.length) break;
+      const samples = v1Stream(u8, base * 8, comp, fr - 1);
+      if (!samples) break;
+      waves.push({ comp, frames: fr, stereo: '0-ed', samples: fr, v1: samples });
+      pos = base + blen;
+      if (pos + 8 > u8.length) break;
+      const gt = u8[pos];
+      if (gt !== 0x05) break; // 0x06 footer: params table runs to EOF
+      pos += 8;
+    }
+    return waves.length ? waves : null;
+  }
+
+  // Oracle-shaped V1 single wave: [01][comp u32][frames u32] then a V1
+  // residual stream. Tries big- then little-endian header.
+  function parseV1(u8) {
+    if (!u8.length || u8[0] !== 0x01) return null;
+    const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+    for (const le of [false, true]) {
+      let comp, fr;
+      try {
+        comp = dv.getUint32(1, le);
+        fr = dv.getUint32(5, le);
+      } catch (e) { continue; }
+      if (!(comp > 0 && comp <= 8 * (u8.length - 9))) continue;
+      if (!(fr > 1 && fr < 1e7)) continue;
+      const samples = v1Stream(u8, 9 * 8, comp, fr - 1);
+      if (samples) {
+        return [{ comp, frames: fr, stereo: '0-x', samples: fr, v1: samples }];
+      }
+    }
+    return null;
+  }
+
+  // V1 201-count blocks from bit pos. Returns {samples:Array, endpos}.
+  function decodeBlocks(u8, bitlen, pos) {
+    const out = [];
+    while (pos + 8 <= bitlen) {
+      const k = byteAt(u8, pos);
+      if (!(k >= 1 && k <= MAX_K)) break;
+      pos += 8;
+      let n = BLOCK_SAMPLES;
+      if (pos + n * k > bitlen) n = Math.floor((bitlen - pos) / k);
+      if (n <= 0) break;
+      for (let i = 0; i < n; i++) {
+        const r = readSM(u8, pos, k);
+        pos = r[1];
+        out.push(r[0] === 0 ? 0 : r[0]); // normalize -0
+      }
+    }
+    return { samples: out, endpos: pos };
+  }
+
+  // spec: ['raw',n] | ['blk',S,k,C,T] | ['blocks',[[k,C]..],T] | ['tail8',T0?]
+  function decodeWave(wblob, frames, spec) {
+    const w = wblob instanceof Uint8Array ? wblob : new Uint8Array(wblob);
+    const kind = spec[0];
+    if (kind === 'raw') {
+      const nraw = spec[1];
+      const raw = [];
+      for (let i = 0; i < 3 * nraw; i += 3) raw.push(sm24(w[i], w[i + 1], w[i + 2]));
+      const t2 = decodeBlocks(w.subarray(3 * nraw), (w.length - 3 * nraw) * 8, 0);
+      return raw.concat(t2.samples);
+    }
+    if (kind === 'tail8') {
+      const T0 = spec.length > 1 ? spec[1] : 8;
+      return decodeBlocks(w, w.length * 8, T0).samples;
+    }
+    if (kind === 'blk') {
+      const S = spec[1], k = spec[2], C = spec[3], T = spec[4];
+      const atk = [];
+      for (let i = 0; i < C; i++) {
+        const r = readSM(w, S + 8 + i * k, k);
+        atk.push(r[0] === 0 ? 0 : r[0]);
+      }
+      return atk.concat(decodeBlocks(w, w.length * 8, T).samples);
+    }
+    if (kind === 'blocks') {
+      const blks = spec[1], T = spec[2];
+      let p = 0;
+      const out = [];
+      for (const [k, C] of blks) {
+        p += 8;
+        for (let i = 0; i < C; i++) {
+          const r = readSM(w, p, k);
+          p = r[1];
+          out.push(r[0] === 0 ? 0 : r[0]);
+        }
+      }
+      return out.concat(decodeBlocks(w, w.length * 8, T).samples);
+    }
+    throw new Error('bad spec');
+  }
+
+  function applyVoiceRule(vec, frames) {
+    const out = new Float64Array(frames);
+    const n = Math.min(vec.length, frames);
+    for (let i = 0; i < n; i++) out[i] = vec[i];
+    return out;
+  }
+
+  return { sm24, readSM, bitAt, byteAt, bitsOf, parseV2, parseV1, parseEditor,
+           v1Stream, decodeBlocks, decodeWave, applyVoiceRule };
+}));
+
+</script>
+<script>
+/* Structural solver for unknown MONO waves (raw head / identity block chains /
+   single attack block / tail-from-zeros). Port of py/solve_wave.py +
+   render_library.solve_wave. Stereo waves go through stereo.js instead. */
+(function (root, factory) {
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = factory(require('./decode.js'));
+  } else {
+    root.TCISolve = factory(root.TCIDecode);
+  }
+}(typeof self !== 'undefined' ? self : this, function (D) {
+  'use strict';
+
+  // Width bytes seen in mono attack-block heads, mapped to the bit width the
+  // decoder actually uses. Tail bytes are identity (byte == k). See WRITEUP.md.
+  const KMAP = { 145: 23, 149: 23, 29: 23, 62: 23, 75: 23, 142: 20, 22: 21,
+                 140: 21, 129: 20, 191: 20, 20: 20, 24: 24 };
+
+  // Bit offsets that start long `count`-sample V1 chains, longest first.
+  // The longest run is not always the true tail start: a misframed first block
+  // can extend a run backwards over head data, so every hit still needs a
+  // length + smoothness check before it is trusted (see solveWave).
+  function runScan(u8, bitlen, lo, hi, minRun, count) {
+    lo = lo || 0; hi = hi || 60000; minRun = minRun || 10; count = count || 201;
+    const out = [];
+    const end = Math.min(hi, bitlen - 8);
+    for (let pos = lo; pos < end; pos++) {
+      const k0 = D.byteAt(u8, pos);
+      if (!(k0 >= 1 && k0 <= 24)) continue;
+      let run = 0, p = pos;
+      while (p + 8 <= bitlen) {
+        const k = D.byteAt(u8, p);
+        if (!(k >= 1 && k <= 24)) break;
+        if (p + 8 + count * k > bitlen) { run += 0.5; break; }
+        p += 8 + count * k;
+        run += 1;
+        if (run > 600) break;
+      }
+      if (run >= minRun) out.push([run, pos]);
+    }
+    out.sort((a, b) => b[0] - a[0]);
+    return out;
+  }
+
+  function tailCount(u8, bitlen, T, count) {
+    count = count || 201;
+    let pos = T, cnt = 0;
+    while (pos + 8 <= bitlen) {
+      const k = D.byteAt(u8, pos);
+      if (!(k >= 1 && k <= 24)) break;
+      pos += 8;
+      let n = count;
+      if (pos + n * k > bitlen) n = Math.floor((bitlen - pos) / k);
+      if (n <= 0) break;
+      pos += n * k;
+      cnt += n;
+    }
+    return { cnt, endpos: pos };
+  }
+
+  function decodeSpan(u8, pos, k, C) {
+    const out = new Float64Array(C);
+    for (let i = 0; i < C; i++) {
+      const r = D.readSM(u8, pos, k);
+      pos = r[1];
+      out[i] = r[0] === 0 ? 0 : r[0];
+    }
+    return out;
+  }
+
+  function smoothScore(seg, k) {
+    if (seg.length < 8) return 9.0;
+    let s = 0;
+    for (let i = 1; i < seg.length; i++) s += Math.abs(seg[i] - seg[i - 1]);
+    return (s / (seg.length - 1)) / Math.pow(2, k - 1);
+  }
+
+  function tailEndOk(endp, L, tol) {
+    return endp >= L - (tol === undefined ? 64 : tol);
+  }
+
+  // Returns {spec, grade, note} or {spec:null,...}. Mirrors solve_wave().
+  function solveWave(wblob, fr) {
+    const w = wblob instanceof Uint8Array ? wblob : new Uint8Array(wblob);
+    const bitlen = w.length * 8;
+    const raw = new Float64Array(200);
+    for (let i = 0; i < 200; i++) raw[i] = D.sm24(w[3 * i], w[3 * i + 1], w[3 * i + 2]);
+    let rmad = 0;
+    for (let i = 1; i < 200; i++) rmad += Math.abs(raw[i] - raw[i - 1]);
+    rmad = (rmad / 199) / Math.pow(2, 23);
+    if (rmad < 0.25) {
+      const t = D.decodeBlocks(w.subarray(600), (w.length - 600) * 8, 0);
+      const over = 200 + t.samples.length - fr;
+      if (over >= -2 && tailEndOk(4800 + t.endpos, bitlen)) {
+        return { spec: ['raw', 200], grade: 'A',
+                 note: `raw200 mad=${rmad.toFixed(3)} over=${over}` };
+      }
+    }
+    // multi identity-chain prefixes from bit 0
+    let p = 0;
+    const blks = [];
+    while (p + 8 <= bitlen && blks.length < 12) {
+      const k = D.byteAt(w, p);
+      if (!(k >= 1 && k <= 24) || p + 8 + 201 * k > bitlen) break;
+      blks.push([k, 201, p]);
+      p += 8 + 201 * k;
+    }
+    for (let n = Math.min(blks.length, 12); n >= 2; n--) {
+      const pre = blks.slice(0, n);
+      const Tp = pre[n - 1][2] + 8 + 201 * pre[n - 1][0];
+      const t = tailCount(w, bitlen, Tp);
+      let sum = 0;
+      for (const b of pre) sum += b[1];
+      const over = sum + t.cnt - fr;
+      if (over >= -2 && over <= 44 && tailEndOk(t.endpos, bitlen)) {
+        return { spec: ['blocks', pre.map(b => [b[0], b[1]]), Tp], grade: 'A',
+                 note: `${n}x identity blocks over=${over}` };
+      }
+    }
+    // single-block fits
+    const cands = [], k1cands = [];
+    for (const [, T] of runScan(w, bitlen, 0, 60000, 10, 201)) {
+      const t = tailCount(w, bitlen, T);
+      if (!tailEndOk(t.endpos, bitlen)) continue;
+      const lo = Math.max(8, fr - t.cnt - 8);
+      for (let C = lo; C <= fr - t.cnt + 44; C++) {
+        for (let k = 1; k <= 24; k++) {
+          const S = T - 8 - C * k;
+          if (S < 0 || S > 6000) continue;
+          const sc = smoothScore(decodeSpan(w, S + 8, k, C), k);
+          if (sc >= 0.15) continue;
+          const b = D.byteAt(w, S);
+          if (k === 1) {
+            k1cands.push([S, Math.abs(C + t.cnt - fr), C, T, b, sc]);
+          } else {
+            const bonus = (b === k) || (KMAP[b] === k);
+            cands.push([bonus, S, Math.abs(C + t.cnt - fr), C, k, T, b, sc]);
+          }
+        }
+      }
+    }
+    let best = null;
+    if (cands.length) {
+      cands.sort((a, b2) => ((!a[0]) - (!b2[0])) || (a[1] - b2[1]) || (a[2] - b2[2]));
+      const [, S, , C, k, T, b, sc] = cands[0];
+      const over = C + tailCount(w, bitlen, T).cnt - fr;
+      const grade = (over === 0 && sc < 0.08) ? 'A' : (Math.abs(over) <= 2 ? 'B' : 'C');
+      best = { spec: ['blk', S, k, C, T], grade,
+               note: `C=${C} k=${k} S=${S} T=${T} byte=${b} over=${over} sm=${sc.toFixed(2)}` };
+    } else if (k1cands.length) {
+      k1cands.sort((a, b2) => (a[0] - b2[0]) || (a[1] - b2[1]));
+      const [, , C, T, b, sc] = k1cands[0];
+      const over = C + tailCount(w, bitlen, T).cnt - fr;
+      best = { spec: ['blk', T - 8 - C, 1, C, T], grade: 'C',
+               note: `C=${C} k=1 S=${T - 8 - C} T=${T} byte=${b} over=${over} sm=${sc.toFixed(2)} (silence?)` };
+    }
+    // tailN: leading zero bytes + V1 tail. Preferred over k==1 silence.
+    let tailn = null;
+    let Z = 0;
+    while (Z < 4 && w[Z] === 0) Z++;
+    if (Z) {
+      const T0 = 8 * Z;
+      const t = tailCount(w, bitlen, T0);
+      const over = t.cnt - fr;
+      if (over >= -8 && over <= 44 && tailEndOk(t.endpos, bitlen)) {
+        const kk = D.byteAt(w, T0);
+        if (kk >= 1 && kk <= 24) {
+          const sc = smoothScore(decodeSpan(w, T0, kk, 201), kk);
+          if (sc < 0.15) {
+            tailn = { spec: ['tail8', T0], grade: 'B',
+                      note: `tail-from-${T0} zeros=${Z} over=${over}` };
+          }
+        }
+      }
+    }
+    if (best && best.spec[0] === 'blk' && best.spec[2] === 1 && tailn) return tailn;
+    if (best) return best;
+    if (tailn) return tailn;
+    return { spec: null, grade: 'X', note: 'unsolved' };
+  }
+
+  return { KMAP, runScan, tailCount, decodeSpan, smoothScore, solveWave };
+}));
+
+</script>
+<script>
+/* Stereo (stereo=1) wave decoder.
+
+   Layout, as proven against the library (see WRITEUP.md section 5):
+     - The wave is one joint stream of `2 * frames` sign-magnitude samples
+       (the footer confirms it: wd{i}samples == 2 * wd{i}frames).
+     - Everything from `tailStart` on is a chain of V1 blocks,
+       [k:8][201 x k-bit samples], and that chain consumes the wave's bit
+       budget to within a few trailing pad bits.
+     - Sample N of the joint stream is L when N is even and R when N is odd,
+       counted over the WHOLE stream including the head. Because a block
+       holds an odd 201 samples, this parity alternates block by block;
+       deinterleaving by global index is what keeps the channels consistent.
+     - The first `head` joint samples (0..400 across the library, median 186,
+       i.e. ~93-100 frames or ~2 ms) come from a non-V1 head path that is not
+       decoded yet. They are left silent and reported, never guessed.
+
+   Works in browsers (plain script) and Node (module.exports). */
+(function (root, factory) {
+  if (typeof module !== 'undefined' && module.exports) module.exports = factory();
+  else root.TCIStereo = factory();
+}(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  const BLOCK_SAMPLES = 201;
+  const MAX_K = 24;
+
+  // The tail start never exceeded 7236 bits over the whole library; 64 kbit
+  // of headroom keeps the scan cheap without risking a miss.
+  const HEAD_SCAN_BITS = 65536;
+  // Loudest observed head was 400 joint samples. 4096 (~2k frames) still
+  // catches anything unusual while rejecting accidental early matches.
+  const HEAD_MAX_SAMPLES = 4096;
+  // Trailing slack between the chain end and wd{i}comp1 was at most 31 bits.
+  const TAIL_TOLERANCE_BITS = 64;
+
+  function asU8(x) {
+    return x instanceof Uint8Array ? x : new Uint8Array(x);
+  }
+
+  // 8-bit value starting at bit offset `pos` (MSB-first bitstream).
+  function byteAt(u8, pos) {
+    const j = pos >> 3, s = pos & 7;
+    let v = u8[j] << s;
+    if (s && j + 1 < u8.length) v |= u8[j + 1] >> (8 - s);
+    return v & 0xFF;
+  }
+
+  // k-bit sign-magnitude field at bit offset `pos`. k=1 always decodes to 0.
+  // s + k <= 31, so a 4-byte window and one unsigned shift are enough.
+  function readSM(u8, pos, k) {
+    const j = pos >> 3, s = pos & 7;
+    const a = j < u8.length ? u8[j] : 0;
+    const b = j + 1 < u8.length ? u8[j + 1] : 0;
+    const c = j + 2 < u8.length ? u8[j + 2] : 0;
+    const d = j + 3 < u8.length ? u8[j + 3] : 0;
+    const word = ((a << 24) | (b << 16) | (c << 8) | d) >>> 0;
+    const code = (word >>> (32 - s - k)) & ((1 << k) - 1);
+    const mag = code & ((1 << (k - 1)) - 1);
+    return (code & (1 << (k - 1))) && mag ? -mag : mag;
+  }
+
+  // Width byte at every bit offset below `nbits`, so scanning the head
+  // region does not re-derive bytes per candidate.
+  function bitByteTable(u8, nbits) {
+    const n = Math.min(nbits, u8.length * 8);
+    const t = new Uint8Array(n);
+    for (let i = 0; i < n; i++) {
+      const j = i >> 3, s = i & 7;
+      let v = u8[j] << s;
+      if (s && j + 1 < u8.length) v |= u8[j + 1] >> (8 - s);
+      t[i] = v & 0xFF;
+    }
+    return t;
+  }
+
+  // Walk V1 blocks from `start`, stopping once `count` would exceed `cap`.
+  // Returns {count, end} when the chain reaches `comp` (within tolerance),
+  // else null.
+  function walkTail(u8, kv, start, comp, cap, tol) {
+    let pos = start, count = 0;
+    const nearEnd = () => (pos >= comp - tol ? { count, end: pos } : null);
+    while (pos + 8 <= comp) {
+      const k = pos < kv.length ? kv[pos] : byteAt(u8, pos);
+      if (k < 1 || k > MAX_K) return nearEnd();
+      pos += 8;
+      let n = BLOCK_SAMPLES;
+      if (pos + n * k > comp) n = Math.floor((comp - pos) / k);
+      if (n <= 0) return nearEnd();
+      pos += n * k;
+      count += n;
+      if (count > cap) return null;
+    }
+    return nearEnd();
+  }
+
+  // Locate the tail: the earliest bit offset from which a V1 block chain reaches
+  // the end of the bit budget while leaving at most HEAD_MAX_SAMPLES joint
+  // samples unexplained. Every block boundary inside a real tail qualifies, so
+  // the smallest head wins. Chance matches inside the head do exist (its bits
+  // are high-entropy audio, and ~9% of byte values look like a width byte) but
+  // a real chain has to survive millions of bits to the end of the wave to
+  // qualify, which they never do: 3902/3902 waves decode with the smallest
+  // head in range.
+  function findTail(u8, comp, totalSamples) {
+    const kv = bitByteTable(u8, Math.min(HEAD_SCAN_BITS, comp));
+    let best = null;
+    for (let T = 0; T + 8 <= kv.length; T++) {
+      const k = kv[T];
+      if (k < 1 || k > MAX_K) continue;
+      const w = walkTail(u8, kv, T, comp, totalSamples, TAIL_TOLERANCE_BITS);
+      if (!w) continue;
+      const head = totalSamples - w.count;
+      if (head < 0 || head > HEAD_MAX_SAMPLES) continue;
+      if (!best || head < best.head) best = { tailStart: T, count: w.count, end: w.end, head };
+    }
+    return best;
+  }
+
+  // Joint V1 stream between two bit offsets, exactly `count` samples long.
+  function decodeJoint(u8, start, end, count) {
+    const out = new Float64Array(count);
+    let pos = start, n = 0;
+    while (pos + 8 <= end && n < count) {
+      const k = byteAt(u8, pos);
+      if (k < 1 || k > MAX_K) break;
+      pos += 8;
+      let m = Math.min(BLOCK_SAMPLES, count - n, Math.floor((end - pos) / k));
+      for (let i = 0; i < m; i++, n++) out[n] = readSM(u8, pos + i * k, k);
+      pos += m * k;
+    }
+    return out;
+  }
+
+  // Returns {L, R, headSamples, headFrames, tailStart} or null when no tail
+  // chain explains the wave. L/R hold exactly `frames` samples each; the
+  // unresolved head frames stay silent at the front.
+  function decodeStereo(wblob, comp, frames) {
+    const u8 = asU8(wblob);
+    if (!(comp > 0) || !(frames > 0)) return null;
+    const t = findTail(u8, comp, 2 * frames);
+    if (!t) return null;
+    const joint = decodeJoint(u8, t.tailStart, t.end, t.count);
+    const L = new Float64Array(frames);
+    const R = new Float64Array(frames);
+    // Frame j owns global joint samples 2j (L) and 2j+1 (R); global index g
+    // sits at tail index g - head, so anything below `head` is a sample the
+    // undecoded head path should have supplied and is left silent.
+    for (let j = 0; j < frames; j++) {
+      const i = 2 * j - t.head;
+      if (i >= 0) L[j] = joint[i];
+      if (i + 1 >= 0) R[j] = joint[i + 1];
+    }
+    return {
+      L,
+      R,
+      headSamples: t.head,
+      headFrames: Math.ceil(t.head / 2),
+      tailStart: t.tailStart,
+      tailSamples: t.count,
+    };
+  }
+
+  return {
+    BLOCK_SAMPLES,
+    MAX_K,
+    HEAD_SCAN_BITS,
+    HEAD_MAX_SAMPLES,
+    TAIL_TOLERANCE_BITS,
+    byteAt,
+    readSM,
+    bitByteTable,
+    walkTail,
+    findTail,
+    decodeJoint,
+    decodeStereo,
+  };
+}));
+</script>
+<script>
+/* Velocity grouping, V/RR naming, WAV + MAP output, stereo decoding.
+   Port of the export half of py/tci_export.py. Browser + Node. */
+(function (root, factory) {
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = factory(require('./decode.js'), require('./solve.js'),
+                             require('./stereo.js'));
+  } else {
+    root.TCIExport = factory(root.TCIDecode, root.TCISolve, root.TCIStereo);
+  }
+}(typeof self !== 'undefined' ? self : this, function (D, S, ST) {
+  'use strict';
+
+  const RR_RATIO = 1.12;
+  const ATK_N = 5000;
+
+  function attackPeak(vec) {
+    const n = Math.min(vec.length, ATK_N);
+    let m = 0;
+    for (let i = 0; i < n; i++) {
+      const a = Math.abs(vec[i]);
+      if (a > m) m = a;
+    }
+    return m;
+  }
+
+  // Stereo waves decode exactly from their V1 tail; the ~2 ms attack head uses
+  // a path that is not cracked, so those frames stay silent and the gap is
+  // reported rather than guessed. `comp` is the footer's used-bit count.
+  function decodeStereoWave(blob, comp, frames) {
+    const r = ST.decodeStereo(blob, comp, frames);
+    if (!r) return null;
+    return {
+      L: r.L,
+      R: r.R,
+      peak: Math.max(attackPeak(r.L), attackPeak(r.R)),
+      grade: 'B',
+      note: `stereo tail@bit${r.tailStart}/${r.tailSamples}sm`
+        + (r.headFrames ? ` head:${r.headFrames}fr silent` : ' head:none'),
+      headFrames: r.headFrames,
+    };
+  }
+
+  function pack24LE(v) {
+    const iv = Math.max(-8388608, Math.min(8388607, Math.round(v))) & 0xFFFFFF;
+    return [iv & 255, (iv >> 8) & 255, (iv >> 16) & 255];
+  }
+
+  function wavHeader(nCh, nFrames) {
+    const h = new Uint8Array(44);
+    const dv = new DataView(h.buffer);
+    const ws = (o, s) => { for (let i = 0; i < s.length; i++) h[o + i] = s.charCodeAt(i); };
+    ws(0, 'RIFF');
+    dv.setUint32(4, 36 + nFrames * nCh * 3, true);
+    ws(8, 'WAVEfmt ');
+    dv.setUint32(16, 16, true);
+    dv.setUint16(20, 1, true);
+    dv.setUint16(22, nCh, true);
+    dv.setUint32(24, 44100, true);
+    dv.setUint32(28, 44100 * nCh * 3, true);
+    dv.setUint16(32, nCh * 3, true);
+    dv.setUint16(34, 24, true);
+    ws(36, 'data');
+    dv.setUint32(40, nFrames * nCh * 3, true);
+    return h;
+  }
+
+  function exportMonoWav(vec) {
+    const n = vec.length;
+    const out = new Uint8Array(44 + n * 3);
+    out.set(wavHeader(1, n), 0);
+    for (let i = 0; i < n; i++) {
+      const [a, b, c] = pack24LE(vec[i]);
+      out[44 + 3 * i] = a; out[44 + 3 * i + 1] = b; out[44 + 3 * i + 2] = c;
+    }
+    return out;
+  }
+
+  function exportStereoWav(L, R) {
+    const n = Math.min(L.length, R.length);
+    const out = new Uint8Array(44 + n * 6);
+    out.set(wavHeader(2, n), 0);
+    for (let i = 0; i < n; i++) {
+      const [a, b, c] = pack24LE(L[i]);
+      const [d, e, f] = pack24LE(R[i]);
+      out.set([a, b, c, d, e, f], 44 + 6 * i);
+    }
+    return out;
+  }
+
+  // waves: [{comp,frames,stereo,blob,v1?}]. Returns {files, skipped, mapText}.
+  // files: [{name, wave, channels, grade, peak, note, wav:Uint8Array}]
+  function exportWaves(waves, family, mic) {
+    const items = [];
+    waves.forEach((wv, i) => {
+      const wave = `wave${String(i).padStart(2, '0')}`;
+      try {
+        if (String(wv.stereo).startsWith('1')) {
+          const r = decodeStereoWave(wv.blob, wv.comp, wv.frames);
+          if (!r) {
+            items.push({ pk: 0, i, wave, kind: 'skip', payload: null, channels: 2,
+                         grade: 'X', note: 'no V1 tail chain reaches end-of-bits' });
+            return;
+          }
+          items.push({ pk: r.peak, i, wave, kind: 'stereo', payload: [r.L, r.R],
+                       channels: 2, grade: r.grade, note: r.note });
+          return;
+        }
+        if (wv.v1) {
+          const v = D.applyVoiceRule(wv.v1, wv.frames);
+          items.push({ pk: attackPeak(v), i, wave, kind: 'mono', payload: v,
+                       channels: 1, grade: 'A', note: 'V1 single' });
+          return;
+        }
+        const r = S.solveWave(wv.blob, wv.frames);
+        if (!r.spec) {
+          items.push({ pk: 0, i, wave, kind: 'skip', payload: null, channels: 1,
+                       grade: r.grade, note: r.note });
+          return;
+        }
+        const v = D.applyVoiceRule(D.decodeWave(wv.blob, wv.frames, r.spec), wv.frames);
+        items.push({ pk: attackPeak(v), i, wave, kind: 'mono', payload: v,
+                     channels: 1, grade: r.grade, note: r.note });
+      } catch (e) {
+        items.push({ pk: 0, i, wave, kind: 'skip', payload: null, channels: 1,
+                     grade: 'X', note: 'crash: ' + e.message });
+      }
+    });
+    const ranked = items.filter(it => it.kind !== 'skip').sort((a, b) => a.pk - b.pk);
+    const groups = [];
+    let cur = [];
+    for (const it of ranked) {
+      const mx = cur.reduce((m, x) => Math.max(m, x.pk), 0);
+      if (cur.length && it.pk / Math.max(mx, 1e-9) >= RR_RATIO) {
+        groups.push(cur);
+        cur = [];
+      }
+      cur.push(it);
+    }
+    if (cur.length) groups.push(cur);
+    const files = [];
+    groups.forEach((grp, vi) => {
+      grp.sort((a, b) => a.pk - b.pk).forEach((it, ri) => {
+        const fn = `${family}_${mic}_V${String(vi + 1).padStart(2, '0')}_RR${ri + 1}.wav`;
+        const wav = it.kind === 'stereo'
+          ? exportStereoWav(it.payload[0], it.payload[1])
+          : exportMonoWav(it.payload);
+        files.push({ name: fn, wave: it.wave, channels: it.channels,
+                     grade: it.grade, peak: peakOf(it), note: it.note, wav });
+      });
+    });
+    const skipped = items.filter(it => it.kind === 'skip')
+      .map(it => ({ name: null, wave: it.wave, channels: it.channels,
+                    grade: it.grade, peak: null, note: it.note }));
+    const tag = (c) => (c === 2 ? 'st' : 'mono');
+    const lines = files.map(f => `${f.name} <- ${f.wave} [${f.grade}] ${tag(f.channels)} peak=${f.peak} ${f.note}`)
+      .concat(skipped.map(s => `-- ${s.wave} [${s.grade}] ${tag(s.channels)} ${s.note}`));
+    return { files, skipped, mapText: lines.join('\n') + '\n' };
+  }
+
+  function peakOf(it) {
+    let m = 0;
+    const seqs = it.kind === 'stereo' ? it.payload : [it.payload];
+    for (const v of seqs) for (let i = 0; i < v.length; i++) {
+      const a = Math.abs(v[i]);
+      if (a > m) m = a;
+    }
+    return Math.round(m);
+  }
+
+  return { RR_RATIO, ATK_N, attackPeak, decodeStereoWave, exportMonoWav,
+           exportStereoWav, exportWaves };
+}));
+
+</script>
+<script>
+/* Streaming ZIP writer for the browser app.
+ *
+ * tci2wav decodes a whole instrument folder at a time, so a single
+ * "everything in memory" ZIP array is not an option: 400+ TCIs turn into
+ * gigabytes of 24-bit PCM. This writer appends one entry at a time to a list
+ * of Blob parts, so only the entry being added is resident. Entries are
+ * deflated with CompressionStream('deflate-raw') when available and stored
+ * uncompressed otherwise (drum PCM does not compress much anyway).
+ *
+ * Browser + Node (module.exports).
+ */
+(function (root, factory) {
+  if (typeof module !== 'undefined' && module.exports) module.exports = factory();
+  else root.TCIZip = factory();
+}(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  const CRC = (() => {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+
+  function crc32(u8) {
+    let c = 0xffffffff;
+    for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  }
+
+  function dosTime(d) {
+    return ((d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1)) & 0xffff;
+  }
+  function dosDate(d) {
+    return (((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()) & 0xffff;
+  }
+
+  let canDeflate = typeof CompressionStream !== 'undefined';
+  async function deflateRaw(u8) {
+    if (!canDeflate) return null;
+    try {
+      const s = new Blob([u8]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+      return new Uint8Array(await new Response(s).arrayBuffer());
+    } catch (e) {
+      canDeflate = false;          // one failure is enough, stop trying
+      return null;
+    }
+  }
+
+  class ZipWriter {
+    constructor() {
+      this.parts = [];
+      this.entries = [];
+      this.offset = 0;
+      this.raw = 0;                 // uncompressed bytes, for the progress bar
+      this.done = false;
+      const d = new Date();
+      this.time = dosTime(d);
+      this.date = dosDate(d);
+    }
+
+    // name may contain '/' and non-ASCII; entry order is insertion order.
+    async add(name, data) {
+      if (this.done) throw new Error('zip already finished');
+      const u8 = data instanceof Uint8Array ? data : new Uint8Array(data);
+      const nb = new TextEncoder().encode(name);
+      const crc = crc32(u8);
+      // Deflate is only worth it if it actually shrinks the entry: 24-bit PCM
+      // barely compresses and short text files can grow.
+      const packed = await deflateRaw(u8);
+      const useDeflate = !!packed && packed.length < u8.length;
+      const method = useDeflate ? 8 : 0;
+      const body = useDeflate ? packed : u8;
+
+      const h = new Uint8Array(30 + nb.length);
+      const dv = new DataView(h.buffer);
+      dv.setUint32(0, 0x04034b50, true);
+      dv.setUint16(4, 20, true);                       // version needed
+      dv.setUint16(6, 0x0800, true);                   // UTF-8 names
+      dv.setUint16(8, method, true);
+      dv.setUint16(10, this.time, true);
+      dv.setUint16(12, this.date, true);
+      dv.setUint32(14, crc, true);
+      dv.setUint32(18, body.length, true);
+      dv.setUint32(22, u8.length, true);
+      dv.setUint16(26, nb.length, true);
+      h.set(nb, 30);
+
+      this.parts.push(h, body);
+      this.entries.push({ nb, crc, method, csize: body.length,
+                        usize: u8.length, off: this.offset });
+      this.offset += h.length + body.length;
+      this.raw += u8.length;
+    }
+
+    // Appends a text file (MAP.txt and friends).
+    addText(name, text) {
+      return this.add(name, new TextEncoder().encode(text));
+    }
+
+    finish() {
+      if (this.done) return this.blob();
+      const central = [];
+      for (const e of this.entries) {
+        const c = new Uint8Array(46 + e.nb.length);
+        const dv = new DataView(c.buffer);
+        // central directory header: the field offsets below are fixed by the
+        // spec and differ from the local header (method sits at 10, not 8)
+        dv.setUint32(0, 0x02014b50, true);
+        dv.setUint16(4, 20, true);            // version made by
+        dv.setUint16(6, 20, true);            // version needed
+        dv.setUint16(8, 0x0800, true);        // UTF-8 names
+        dv.setUint16(10, e.method, true);
+        dv.setUint16(12, this.time, true);
+        dv.setUint16(14, this.date, true);
+        dv.setUint32(16, e.crc, true);
+        dv.setUint32(20, e.csize, true);
+        dv.setUint32(24, e.usize, true);
+        dv.setUint16(28, e.nb.length, true);
+        dv.setUint32(42, e.off, true);
+        c.set(e.nb, 46);
+        central.push(c);
+      }
+      const cenSize = central.reduce((a, c) => a + c.length, 0);
+      const eocd = new Uint8Array(22);
+      const dv = new DataView(eocd.buffer);
+      dv.setUint32(0, 0x06054b50, true);
+      dv.setUint16(8, this.entries.length, true);
+      dv.setUint16(10, this.entries.length, true);
+      dv.setUint32(12, cenSize, true);
+      dv.setUint32(16, this.offset, true);
+      this.parts = this.parts.concat(central, [eocd]);
+      this.done = true;
+      return this.blob();
+    }
+
+    blob() {
+      return new Blob(this.parts, { type: 'application/zip' });
+    }
+
+    get bytes() { return this.offset; }
+    get count() { return this.entries.length; }
+  }
+
+  return { ZipWriter, crc32 };
+}));
+</script>
+<script>
+/* Folder-path -> (family, mic, output directory) rules.
+
+   Kept separate from the UI so both the single-file and the batch path derive
+   names the same way, and so the rules can be tested directly.
+
+   A Trigger 2 library is laid out as
+       <Category>/<Instrument>/<Instrument> <MIC>.tci
+   e.g. "Trigger2 Kicks/ACKick/ACKick NRG.tci" -> family ACKick, mic NRG, and the
+   WAVs land in "Trigger2 Kicks/ACKick/NRG/". Falling back to the filename when
+   there is no parent folder keeps single files and loose downloads working. */
+(function (root, factory) {
+  if (typeof module !== 'undefined' && module.exports) module.exports = factory();
+  else root.TCINaming = factory();
+}(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  // Strip anything that would be awkward in a filename or a ZIP entry.
+  function clean(s, fallback) {
+    const t = String(s || '').trim().replace(/[^A-Za-z0-9]+/g, '');
+    return t || fallback;
+  }
+
+  // relPath may be a full relative path or a bare filename.
+  // Returns {dir, family, mic, base, file}.
+  function describe(relPath) {
+    const parts = String(relPath || '').split('/').filter(Boolean);
+    const file = parts.pop() || '';
+    const base = file.replace(/\.tci$/i, '');
+    const toks = base.split(/\s+/).filter(Boolean);
+    const mic = toks.length > 1 ? clean(toks[toks.length - 1].toUpperCase(), 'MIC') : '';
+    // Prefer the containing folder as the family: it is the stable name, and
+    // filenames vary ("ACKick NRG.tci" vs "ACKick_SSDR.tci" vs "ACKick Z3.tci").
+    const fromDir = parts.length ? clean(parts[parts.length - 1], '') : '';
+    const fromName = toks.length > 1 ? clean(toks.slice(0, -1).join(''), '') : clean(base, '');
+    return {
+      file,
+      base,
+      dir: parts.join('/'),
+      family: clean(fromDir || fromName, 'Sample'),
+      mic: clean(mic, 'MIC'),
+    };
+  }
+
+  // Where a converted wave should live inside the batch ZIP: the source tree
+  // (minus the folder the user selected) plus a MIC folder, which is the same
+  // shape the Python CLI writes: <Category>/<Instrument>/<MIC>/.
+  function targetDir(info, root) {
+    let dir = info.dir;
+    if (root) {
+      const r = String(root).split('/').filter(Boolean);
+      const d = dir.split('/').filter(Boolean);
+      if (r.length && d.length && r.every((seg, i) => d[i] === seg)) dir = d.slice(r.length).join('/');
+    }
+    return dir ? dir + '/' + info.mic : info.mic;
+  }
+
+  return { clean, describe, targetDir };
+}));
+</script>
+<script>
+/* UI glue: a queue of .tci jobs, converted into one ZIP, with an audition player.
+
+   One code path covers both cases. Adding a single file produces a queue of
+   one, so "one instrument" and "a whole library" differ only in how many rows
+   the Jobs table has. Family and MIC are guesses derived from the path, and
+   are editable per job because the guess is wrong for plenty of real folders.
+
+   Preview safety: decoded waves can hit nearly full scale, so the player
+   starts at a low level and ramps in over ~25 ms. A hard start on a
+   full-scale transient is an unpleasant click. Export never passes through
+   this gain and stays bit-exact.
+
+   Batch memory: a library is gigabytes of 24-bit PCM, so entries are streamed
+   into the ZIP one at a time and only the most recent jobs keep their audio
+   buffers alive for previewing (PREVIEW_KEEP). */
+(function () {
+  'use strict';
+
+  const $ = (id) => document.getElementById(id);
+  const FS = 2 ** 23 - 1;              // 24-bit full scale
+  const PREVIEW_KEEP = 6;
+  const SEP = '\u0000';   // not legal in a filename, so it cannot clash
+  const WARN_BYTES = 2 * 1024 ** 3;
+
+  const esc = (s) => String(s).replace(/[&<>"]/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const attr = (s) => String(s).replace(/["\\]/g, '\\$&');
+  const dbOf = (v) => (v > 0 ? (20 * Math.log10(v)).toFixed(1) : '-inf');
+  const human = (b) => {
+    const u = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let i = 0, n = b;
+    while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+    return n.toFixed(n < 10 && i > 0 ? 1 : 0) + ' ' + u[i];
+  };
+
+  /* ── theme ───────────────────────────────────────────────────────────── */
+  const THEME_KEY = 'tci2wav-theme';
+  function setTheme(t) {
+    document.documentElement.dataset.theme = t;
+    $('thDark').setAttribute('aria-selected', String(t === 'dark'));
+    $('thLight').setAttribute('aria-selected', String(t === 'light'));
+    try { localStorage.setItem(THEME_KEY, t); } catch (e) { /* private mode */ }
+  }
+  let saved = null;
+  try { saved = localStorage.getItem(THEME_KEY); } catch (e) { /* ignore */ }
+  setTheme(saved || 'dark');
+  $('thDark').onclick = () => setTheme('dark');
+  $('thLight').onclick = () => setTheme('light');
+
+  /* ── preview player ──────────────────────────────────────────────────── */
+  const player = $('player');
+  const volSlider = $('vol');
+  const fadeBox = $('fadeIn');
+  let targetVol = volSlider.valueAsNumber / 100;
+  let ramp = null;
+  let currentToken = null;      // jobId + SEP + wave name
+  let currentJob = null;
+  let currentPeak = 0;
+
+  function showVolume() {
+    const pct = Math.round(targetVol * 100);
+    $('volPct').textContent = pct;
+    $('volDb').textContent = pct ? dbOf(targetVol) : '-inf';
+    player.volume = targetVol;
+  }
+  function killRamp() { if (ramp) { cancelAnimationFrame(ramp); ramp = null; } }
+
+  function rampIn() {
+    killRamp();
+    if (!fadeBox.checked) { player.volume = targetVol; return; }
+    const t0 = performance.now();
+    player.volume = 0;
+    const step = (t) => {
+      const k = Math.min(1, (t - t0) / 25);
+      player.volume = targetVol * k * k * (3 - 2 * k);   // smoothstep
+      ramp = k < 1 ? requestAnimationFrame(step) : null;
+    };
+    ramp = requestAnimationFrame(step);
+  }
+
+  function markPlaying(on) {
+    for (const b of document.querySelectorAll('.playbtn.on')) b.classList.remove('on');
+    if (!on || !currentToken) return;
+    const b = document.querySelector(
+      `.playbtn[data-key="${attr(currentJob)}"][data-name="${attr(currentToken.slice(currentJob.length + 1))}"]`);
+    if (b) b.classList.add('on');
+  }
+
+  function loadPreview(jobId, token, url, label, peak) {
+    killRamp();
+    const same = currentToken === token;
+    currentToken = token;
+    currentJob = jobId;
+    currentPeak = peak || 0;
+    $('nowPlaying').textContent = label;
+    const norm = currentPeak / FS;
+    $('peakBar').style.width = Math.min(100, norm * 100).toFixed(1) + '%';
+    $('peakDb').textContent = currentPeak ? (norm >= 0.98 ? '! ' : '') + dbOf(norm) + ' dBFS' : 'n/a';
+    if (same) return;
+    player.src = url;
+    player.load();
+    for (const b of document.querySelectorAll('.playbtn.on')) b.classList.remove('on');
+  }
+
+  function stopAll() {
+    killRamp();
+    player.pause();
+    player.currentTime = 0;
+    currentToken = null;
+    for (const b of document.querySelectorAll('.playbtn.on')) b.classList.remove('on');
+  }
+
+  player.addEventListener('play', () => markPlaying(true));
+  player.addEventListener('pause', () => markPlaying(false));
+  player.addEventListener('ended', () => markPlaying(false));
+  volSlider.addEventListener('input', () => { targetVol = volSlider.valueAsNumber / 100; showVolume(); });
+  $('stopAll').onclick = stopAll;
+  showVolume();
+
+  /* ── worker pool ─────────────────────────────────────────────────────── */
+  const POOL = 2;
+  const workers = [];
+  const pending = new Map();
+  let seq = 0;
+  for (let i = 0; i < POOL; i++) {
+    const w = new Worker(window.__TCI_WORKER_URL);
+    w.onmessage = (e) => {
+      const cb = pending.get(e.data.id);
+      if (cb) { pending.delete(e.data.id); cb(e.data); }
+    };
+    w.onerror = (e) => {
+      for (const [, cb] of pending) cb({ ok: false, error: e.message || 'worker error' });
+      pending.clear();
+    };
+    workers.push(w);
+  }
+  let rr = 0;
+  function decodeOne(file, family, mic) {
+    return new Promise((resolve, reject) => {
+      const rd = new FileReader();
+      rd.onerror = () => reject(new Error('could not read ' + file.name));
+      rd.onload = () => {
+        const id = ++seq;
+        pending.set(id, (j) => (j.ok ? resolve(j) : reject(new Error(j.error))));
+        workers[rr = (rr + 1) % POOL].postMessage(
+          { id, family, mic, buffer: rd.result }, [rd.result]);
+      };
+      rd.readAsArrayBuffer(file);
+    });
+  }
+
+  function status(el, msg, kind) {
+    el.textContent = msg || '';
+    el.className = 'status' + (msg ? ' show' : '') + (kind ? ' ' + kind : '');
+  }
+
+  /* ── job queue ───────────────────────────────────────────────────────── */
+  let jobs = [];
+  let root = '';                 // folder the user picked, stripped from paths
+  let nextId = 1;
+  let batchCancel = false;
+  let selected = null;           // job id shown in the results table
+  let zipUrl = null;             // blob URL of the current download
+
+  // A job is {id, file, rel, sourceDir, family, mic, state, ui, result}
+  function makeJob(file, fromFolder) {
+    const rel = (fromFolder && file.webkitRelativePath) ? file.webkitRelativePath : file.name;
+    const info = TCINaming.describe(rel);
+    return {
+      id: String(nextId++),
+      file,
+      rel,
+      root,                     // remembered, so a later selection cannot move it
+      sourceDir: info.dir,
+      family: info.family,
+      mic: info.mic,
+      state: 'queued',
+      ui: null,
+      result: null,
+    };
+  }
+
+  // Output directory for a job. Files with no folder of their own land flat in
+  // the ZIP root, which keeps a single-file download tidy.
+  function outDir(job) {
+    const info = TCINaming.describe(job.rel);
+    info.family = job.family;
+    info.mic = job.mic;
+    if (!job.sourceDir) return '';
+    return TCINaming.targetDir(info, job.root);
+  }
+
+  function addFiles(list, fromFolder) {
+    const files = [...list].filter((f) => /\.tci$/i.test(f.name));
+    if (!files.length) { status($('st'), 'No .tci files in that selection.', 'err'); return; }
+    root = fromFolder && files[0].webkitRelativePath
+      ? files[0].webkitRelativePath.split('/')[0] : '';
+    jobs = jobs.concat(files.map((f) => makeJob(f, fromFolder)));
+    renderJobs();
+    const bytes = files.reduce((a, f) => a + f.size, 0);
+    $('pickChip').textContent = `${jobs.length} .tci · ${human(bytes)}`;
+    $('clear').hidden = false;
+    status($('st'), bytes > WARN_BYTES
+      ? `${human(bytes)} selected. A full run takes a while; the page stays usable.`
+      : 'Ready. Convert to run.', bytes > WARN_BYTES ? '' : 'ok');
+  }
+
+  $('files').addEventListener('change', (e) => { addFiles(e.target.files, false); });
+  $('folder').addEventListener('change', (e) => { addFiles(e.target.files, true); });
+
+  $('clear').onclick = () => {
+    stopAll();
+    for (const rec of auditions.values()) for (const u of rec.urls.values()) URL.revokeObjectURL(u);
+    auditions.clear();
+    jobs = [];
+    selected = null;
+    renderJobs();
+    $('pickChip').textContent = '';
+    $('clear').hidden = true;
+    $('jobWrap').hidden = true;
+    $('resWrap').hidden = true;
+    $('resRows').textContent = '';
+    $('mapview').textContent = '';
+    $('dl').hidden = true;
+    if (zipUrl) { URL.revokeObjectURL(zipUrl); zipUrl = null; }
+    $('checkAll').checked = false;
+    status($('st'), '');
+  };
+
+  $('rederive').onclick = () => {
+    for (const j of jobs) {
+      const info = TCINaming.describe(j.rel);
+      j.family = info.family;
+      j.mic = info.mic;
+      if (j.ui) { j.ui.family.value = j.family; j.ui.mic.value = j.mic; }
+    }
+    markDuplicates();
+    status($('st'), 'Names re-derived from paths.', 'ok');
+  };
+
+  $('checkAll').onchange = (e) => {
+    for (const j of jobs) if (j.ui) { j.ui.check.checked = e.target.checked; syncRemoveBtn(); }
+  };
+  function syncRemoveBtn() {
+    $('removeSel').hidden = !jobs.some((j) => j.ui && j.ui.check.checked);
+  }
+  $('removeSel').onclick = () => {
+    const dropped = jobs.filter((j) => j.ui && j.ui.check.checked);
+    for (const j of dropped) j.ui.tr.remove();
+    jobs = jobs.filter((j) => !dropped.includes(j));
+    $('checkAll').checked = false;
+    syncRemoveBtn();
+    $('pickChip').textContent = jobs.length ? `${jobs.length} .tci` : '';
+    $('clear').hidden = !jobs.length;
+    if (!jobs.length) $('jobWrap').hidden = true;
+  };
+
+  // Two jobs writing the same output path would overwrite each other in the
+  // ZIP, which is silent and confusing, so flag it.
+  function markDuplicates() {
+    const seen = new Map();
+    for (const j of jobs) {
+      const key = outDir(j) + '|' + j.family + '|' + j.mic;
+      seen.set(key, (seen.get(key) || 0) + 1);
+    }
+    for (const j of jobs) {
+      const key = outDir(j) + '|' + j.family + '|' + j.mic;
+      const dup = seen.get(key) > 1;
+      if (j.ui) j.ui.tr.classList.toggle('dup', dup);
+      if (j.ui) j.ui.warn.textContent = dup ? 'duplicate output path' : '';
+    }
+  }
+
+  function renderJobs() {
+    const tbody = $('jobRows');
+    if (!jobs.length) { $('jobWrap').hidden = true; return; }
+    $('jobWrap').hidden = false;
+    const keep = new Set(jobs.map((j) => j.id));
+    for (const tr of [...tbody.children]) {
+      if (!keep.has(tr.dataset.job)) tr.remove();
+    }
+    for (const j of jobs) {
+      if (j.ui) { updateJobRow(j); continue; }
+      const tr = document.createElement('tr');
+      tr.dataset.job = j.id;
+      tr.innerHTML =
+        `<td><input type="checkbox" aria-label="Select ${esc(j.file.name)}"></td>` +
+        `<td><code>${esc(j.file.name)}</code><br><span class="outpath">${esc(j.rel)}</span></td>` +
+        `<td><input type="text" class="tblin" aria-label="Sample family"></td>` +
+        `<td><input type="text" class="tblin" aria-label="MIC type"></td>` +
+        `<td><span class="outpath"></span><br><span class="warn"></span></td>` +
+        `<td class="num"></td><td class="num"></td>` +
+        `<td style="color:var(--muted)">queued</td>` +
+        `<td><button class="minibtn playbtn" hidden title="Show and audition">▶</button></td>`;
+      tbody.appendChild(tr);
+      const cells = tr.children;
+      const family = cells[2].querySelector('input');
+      const mic = cells[3].querySelector('input');
+      const check = cells[0].querySelector('input');
+      const play = cells[8].querySelector('button');
+      family.value = j.family;
+      mic.value = j.mic;
+      // The path reacts while typing; the box itself is only tidied on blur so
+      // the caret is not fought mid-keystroke.
+      family.addEventListener('input', () => {
+        j.family = TCINaming.clean(family.value, 'Sample');
+        updateJobRow(j);
+        markDuplicates();
+      });
+      mic.addEventListener('input', () => {
+        j.mic = TCINaming.clean(mic.value, 'MIC').toUpperCase();
+        updateJobRow(j);
+        markDuplicates();
+      });
+      family.addEventListener('change', () => { family.value = j.family; });
+      mic.addEventListener('change', () => { mic.value = j.mic; });
+      check.addEventListener('change', syncRemoveBtn);
+      play.onclick = () => showJob(j, true);
+      tr.addEventListener('click', (e) => {
+        if (e.target.closest('input,button')) return;
+        selectRow(j);
+      });
+      j.ui = {
+        tr, family, mic, check, play,
+        out: cells[4].querySelector('.outpath'),
+        warn: cells[4].querySelector('.warn'),
+        waves: cells[5], stereo: cells[6], state: cells[7],
+      };
+    }
+    for (const j of jobs) updateJobRow(j);
+    markDuplicates();
+    syncRemoveBtn();
+  }
+
+  function updateJobRow(j) {
+    if (!j.ui) return;
+    const d = outDir(j);
+    j.ui.out.textContent = d ? d + '/' : '(zip root)';
+    j.ui.waves.textContent = j.result ? j.result.count : '';
+    j.ui.stereo.textContent = j.result ? j.result.stereo : '';
+    j.ui.state.textContent = j.state;
+    j.ui.state.style.color = j.state === 'done' ? 'var(--accent-2)'
+      : j.state === 'failed' ? 'var(--danger)' : 'var(--muted)';
+    j.ui.play.hidden = !j.result;
+    const playable = !!j.result && auditions.has(j.id);
+    j.ui.play.disabled = !playable;
+    j.ui.play.title = !j.result ? 'Show and audition'
+      : playable ? 'Show and audition'
+        : 'Audio was released to save memory. Convert this file again to audition it.';
+  }
+
+  function selectRow(j) {
+    selected = j.id;
+    for (const x of jobs) if (x.ui) x.ui.tr.classList.toggle('sel', x === j);
+  }
+
+  /* ── auditions ───────────────────────────────────────────────────────── */
+  const auditions = new Map();
+
+  // Each converted job keeps its own blob URLs so any of them can be auditioned
+  // afterwards. Only the entry being replaced is revoked here; older jobs are
+  // dropped by the PREVIEW_KEEP window below, otherwise a folder run would hold
+  // every decoded instrument in memory.
+  function registerAuditions(jobId, files) {
+    const prev = auditions.get(jobId);
+    if (prev) for (const u of prev.urls.values()) URL.revokeObjectURL(u);
+    const urls = new Map();
+    for (const f of files) {
+      if (f.name) urls.set(f.name, URL.createObjectURL(new Blob([f.wav], { type: 'audio/wav' })));
+    }
+    auditions.delete(jobId);
+    auditions.set(jobId, { urls, rows: files });   // re-insert keeps Map order = recency
+    while (auditions.size > PREVIEW_KEEP) {
+      const oldest = auditions.keys().next().value;
+      if (oldest === jobId) break;
+      const rec = auditions.get(oldest);
+      for (const u of rec.urls.values()) URL.revokeObjectURL(u);
+      auditions.delete(oldest);
+      if (currentJob === oldest) { stopAll(); currentJob = null; }
+    }
+    for (const j of jobs) updateJobRow(j);
+  }
+
+  function showJob(j, playFirst) {
+    if (!j.result) return;
+    selectRow(j);
+    const haveAudio = auditions.has(j.id);
+    const host = $('resRows');
+    host.textContent = '';
+    for (const f of j.result.files) {
+      const tr = document.createElement('tr');
+      const playable = !!f.name;
+      tr.innerHTML =
+        `<td>${playable ? `<button class="playbtn"${haveAudio ? '' : ' disabled title="Audio was released; convert this file again"'} data-key="${attr(j.id)}" data-name="${attr(f.name)}">▶ play</button>` : ''}</td>` +
+        `<td><code>${esc(f.name || 'skipped')}</code></td>` +
+        `<td><span class="chip ${f.channels === 2 ? 'st' : ''}">${f.channels === 2 ? 'stereo' : 'mono'}</span></td>` +
+        `<td class="num">${esc(f.wave)}</td>` +
+        `<td><span class="grade g-${esc(f.grade)}">${esc(f.grade)}</span></td>` +
+        `<td class="num">${f.peak == null ? '' : f.peak}</td>` +
+        `<td style="color:var(--muted)">${esc(f.note)}</td>`;
+      const btn = tr.querySelector('.playbtn');
+      if (btn) btn.onclick = () => playWave(j.id, btn);
+      host.appendChild(tr);
+    }
+    $('resWrap').hidden = false;
+    $('mapview').textContent = j.result.map;
+    $('mapDetails').open = true;
+    const first = host.querySelector('.playbtn');
+    if (playFirst && first) first.click();
+  }
+
+  function playWave(jobId, btn) {
+    const rec = auditions.get(jobId);
+    if (!rec) return;
+    const name = btn.dataset.name;
+    const url = rec.urls.get(name);
+    const f = rec.rows.find((r) => r.name === name);
+    if (!url || !f) return;
+    const token = jobId + SEP + name;
+    if (currentToken === token && !player.paused) { stopAll(); return; }
+    loadPreview(jobId, token, url, name, f.peak);
+    for (const b of document.querySelectorAll('.playbtn')) b.classList.remove('on');
+    btn.classList.add('on');
+    player.play().catch(() => { /* autoplay policy */ });
+    rampIn();
+  }
+
+  /* ── convert ─────────────────────────────────────────────────────────── */
+  $('cancel').onclick = () => { batchCancel = true; };
+
+  $('go').onclick = async () => {
+    if (!jobs.length) { status($('st'), 'Add a .tci file or folder first.', 'err'); return; }
+    batchCancel = false;
+    const go = $('go'), cancel = $('cancel'), dl = $('dl');
+    go.disabled = true;
+    cancel.hidden = false;
+    dl.hidden = true;
+    $('bar').hidden = false;
+    $('resWrap').hidden = true;
+    $('resRows').textContent = '';
+    $('mapview').textContent = '';
+    stopAll();
+
+    if (zipUrl) { URL.revokeObjectURL(zipUrl); zipUrl = null; }   // free the last ZIP
+    const zip = new TCIZip.ZipWriter();
+    const map = [];
+    const seenDirs = new Set();
+    let done = 0, waves = 0, stereo = 0, failed = 0;
+    const t0 = performance.now();
+    const bar = $('bar').querySelector('i');
+
+    for (const j of jobs) {
+      j.state = 'queued';
+      j.result = null;
+      updateJobRow(j);
+    }
+
+    const queue = jobs.slice();
+    const runNext = async () => {
+      while (queue.length && !batchCancel) {
+        const job = queue.shift();
+        job.state = 'decoding';
+        updateJobRow(job);
+        try {
+          const r = await decodeOne(job.file, job.family, job.mic);
+          const dir = outDir(job);
+          const relDir = dir ? dir + '/' : '';
+          if (!seenDirs.has(relDir)) {
+            seenDirs.add(relDir);
+            await zip.addText(relDir + 'README.txt',
+              `tci2wav export\nsource: ${job.rel}\nfamily: ${job.family}  mic: ${job.mic}\n` +
+              `# ${r.summary}\n`);
+          }
+          const count = r.files.filter((f) => f.name).length;
+          const st = r.files.filter((f) => f.channels === 2 && f.name).length;
+          map.push(`# ${job.rel} :: ${r.summary}`);
+          for (const f of r.files) {
+            if (!f.name) { map.push(`-- ${relDir}${f.wave} [${f.grade}] ${f.note}`); continue; }
+            await zip.add(relDir + f.name, new Uint8Array(f.wav));
+            waves++;
+            if (f.channels === 2) stereo++;
+            map.push(`${relDir}${f.name} <- ${f.wave} [${f.grade}] ` +
+              `${f.channels === 2 ? 'st' : 'mono'} peak=${f.peak} ${f.note}`);
+          }
+          registerAuditions(job.id, r.files);
+          job.result = { files: r.files, map: map.join('\n') + '\n', count, stereo: st };
+          job.state = 'done';
+          if (!selected) showJob(job, false);
+        } catch (err) {
+          failed++;
+          job.state = 'failed: ' + err.message;
+        }
+        updateJobRow(job);
+        markDuplicates();
+        done++;
+        bar.style.width = ((done / jobs.length) * 100).toFixed(1) + '%';
+        const secs = (performance.now() - t0) / 1000;
+        const eta = done ? (secs / done) * (jobs.length - done) : 0;
+        status($('st'),
+          `${batchCancel ? 'Cancelled' : 'Converting'} ${done}/${jobs.length} · ${waves} WAVs` +
+          `${stereo ? ` · ${stereo} stereo` : ''}${failed ? ` · ${failed} failed` : ''}` +
+          (done < jobs.length
+            ? ` · ${eta < 60 ? Math.ceil(eta) + 's' : Math.ceil(eta / 60) + 'm'} left`
+            : ''));
+      }
+    };
+    await Promise.all([runNext(), runNext()]);
+
+    if (done < jobs.length) {
+      status($('st'), `Cancelled after ${done}/${jobs.length}. Nothing downloaded.`, 'err');
+    } else {
+      await zip.addText('MAP.txt', map.join('\n') + '\n');
+      zipUrl = URL.createObjectURL(zip.finish());
+      dl.href = zipUrl;
+      dl.download = jobs.length === 1
+        ? `${jobs[0].family}_${jobs[0].mic}.zip`
+        : `${root || 'tci2wav'}_batch.zip`;
+      dl.hidden = false;
+      const secs = ((performance.now() - t0) / 1000).toFixed(1);
+      status($('st'),
+        `${jobs.length} file${jobs.length > 1 ? 's' : ''} → ${waves} WAVs` +
+        `${stereo ? ` (${stereo} stereo)` : ''}${failed ? `, ${failed} failed` : ''} · ` +
+        `${human(zip.bytes)} · ${secs}s`, failed ? '' : 'ok');
+    }
+    $('bar').hidden = true;
+    go.disabled = false;
+    cancel.hidden = true;
+  };
+})();
+</script>
+</body>
+</html>
